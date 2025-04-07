@@ -1,6 +1,7 @@
 "use server"
 
 import { supabase } from "@/lib/supabase"
+import { createClient } from "@supabase/supabase-js"
 import { revalidatePath } from "next/cache"
 import { uploadAvatar } from "@/lib/blob"
 
@@ -159,6 +160,122 @@ export async function getResumeData(userId: string): Promise<ResumeData> {
   } catch (error) {
     console.error("Error fetching resume data:", error)
     throw error
+  }
+}
+
+// Get public resume data (for the site owner)
+export async function getPublicResumeData(): Promise<ResumeData> {
+  console.log("=== getPublicResumeData called ===")
+
+  try {
+    // Owner user ID
+    const ownerUserId = "5b2b648d-99aa-45f2-a525-8ed5a02bcf4e"
+    console.log(`Fetching resume data for owner ID: ${ownerUserId}`)
+
+    // Create an admin client using the service role key to bypass RLS
+    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+    console.log("Created admin Supabase client to bypass RLS")
+
+    // Get education
+    const { data: education, error: educationError } = await supabaseAdmin
+      .from("resume_education")
+      .select("*")
+      .eq("user_id", ownerUserId)
+
+    if (educationError) {
+      console.error("Error fetching education:", educationError)
+    } else {
+      console.log(`Found ${education?.length || 0} education items`)
+    }
+
+    // Sort education by period (newest first)
+    const sortedEducation = education ? [...education].sort((a, b) => comparePeriods(a.period, b.period)) : []
+
+    // Get experience
+    const { data: experience, error: experienceError } = await supabaseAdmin
+      .from("resume_experience")
+      .select("*")
+      .eq("user_id", ownerUserId)
+
+    if (experienceError) {
+      console.error("Error fetching experience:", experienceError)
+    } else {
+      console.log(`Found ${experience?.length || 0} experience items`)
+    }
+
+    // Sort experience by period (newest first)
+    const sortedExperience = experience ? [...experience].sort((a, b) => comparePeriods(a.period, b.period)) : []
+
+    // Get skills
+    const { data: skills, error: skillsError } = await supabaseAdmin
+      .from("resume_skills")
+      .select("*")
+      .eq("user_id", ownerUserId)
+      .order("created_at", { ascending: false })
+
+    if (skillsError) {
+      console.error("Error fetching skills:", skillsError)
+    } else {
+      console.log(`Found ${skills?.length || 0} skill categories`)
+    }
+
+    // Get certifications
+    const { data: certifications, error: certificationsError } = await supabaseAdmin
+      .from("resume_certifications")
+      .select("*")
+      .eq("user_id", ownerUserId)
+      .order("created_at", { ascending: false })
+
+    if (certificationsError) {
+      console.error("Error fetching certifications:", certificationsError)
+    } else {
+      console.log(`Found ${certifications?.length || 0} certifications`)
+    }
+
+    // Get projects
+    const { data: projects, error: projectsError } = await supabaseAdmin
+      .from("resume_projects")
+      .select("*")
+      .eq("user_id", ownerUserId)
+      .order("created_at", { ascending: false })
+
+    if (projectsError) {
+      console.error("Error fetching projects:", projectsError)
+    } else {
+      console.log(`Found ${projects?.length || 0} projects`)
+    }
+
+    // Check if we found any data
+    const hasData =
+      (sortedEducation && sortedEducation.length > 0) ||
+      (sortedExperience && sortedExperience.length > 0) ||
+      (skills && skills.length > 0) ||
+      (certifications && certifications.length > 0) ||
+      (projects && projects.length > 0)
+
+    console.log(`Has data: ${hasData}`)
+
+    // If no data is found, return empty arrays
+    return {
+      education: sortedEducation || [],
+      experience: sortedExperience || [],
+      skills: skills || [],
+      certifications: certifications || [],
+      projects: projects || [],
+    }
+  } catch (error) {
+    console.error("Error fetching public resume data:", error)
+    // Return empty data on error
+    return {
+      education: [],
+      experience: [],
+      skills: [],
+      certifications: [],
+      projects: [],
+    }
+  } finally {
+    console.log("=== getPublicResumeData completed ===")
   }
 }
 

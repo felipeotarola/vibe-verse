@@ -7,10 +7,13 @@ import { Button } from "@/components/ui/button"
 import SparklesBackground from "@/components/sparkles-background"
 import ResumeTimeline from "@/components/resume-timeline"
 import { useAuth } from "@/contexts/auth-context"
-import { getResumeData, type ResumeData } from "@/app/actions/resume"
+import { getResumeData, getPublicResumeData, type ResumeData } from "@/app/actions/resume"
 import Link from "next/link"
 
-// Default CV data as fallback
+// The owner's user ID - replace with your actual user ID
+const OWNER_USER_ID = "5b2b648d-99aa-45f2-a525-8ed5a02bcf4e"
+
+// Default CV data as fallback - only used if everything else fails
 const defaultResumeData = {
   education: [
     {
@@ -157,43 +160,137 @@ const defaultResumeData = {
 export default function ResumePage() {
   const { user, isLoading } = useAuth()
   const router = useRouter()
-  const [resumeData, setResumeData] = useState<ResumeData>(defaultResumeData)
+  const [resumeData, setResumeData] = useState<ResumeData | null>(null)
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isUserData, setIsUserData] = useState(false)
+  const [isOwner, setIsOwner] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadResumeData() {
-      if (user) {
-        try {
-          const data = await getResumeData(user.id)
+      try {
+        if (user) {
+          // If user is logged in, check if they're the owner
+          const isOwner = user.id === OWNER_USER_ID
+          setIsOwner(isOwner)
+          console.log(`User is logged in. User ID: ${user.id}, Is Owner: ${isOwner}`)
 
-          // Check if user has any resume data
-          const hasData =
-            data.education.length > 0 ||
-            data.experience.length > 0 ||
-            data.skills.length > 0 ||
-            data.certifications.length > 0 ||
-            data.projects.length > 0
+          if (isOwner) {
+            // If the user is the owner, get their resume data
+            console.log("Loading owner's resume data")
+            const data = await getResumeData(user.id)
 
-          if (hasData) {
-            setResumeData(data)
-            setIsUserData(true)
+            // Check if owner has any resume data
+            const hasData =
+              data.education.length > 0 ||
+              data.experience.length > 0 ||
+              data.skills.length > 0 ||
+              data.certifications.length > 0 ||
+              data.projects.length > 0
+
+            if (hasData) {
+              console.log("Owner has resume data, using it")
+              setResumeData(data)
+              setIsUserData(true)
+            } else {
+              // Owner has no data, use default
+              console.log("Owner has no resume data, using default")
+              setResumeData(defaultResumeData)
+              setIsUserData(false)
+            }
           } else {
-            // Use default data if user has no resume data
+            // If not the owner, try to get the owner's public resume
+            console.log("User is not the owner, fetching owner's public resume")
+            try {
+              const ownerData = await getPublicResumeData()
+
+              // Check if we got any data back
+              const hasOwnerData =
+                ownerData.education.length > 0 ||
+                ownerData.experience.length > 0 ||
+                ownerData.skills.length > 0 ||
+                ownerData.certifications.length > 0 ||
+                ownerData.projects.length > 0
+
+              if (hasOwnerData) {
+                console.log("Found owner's public resume data")
+                setResumeData(ownerData)
+              } else {
+                // If no owner data, check if the user has their own data
+                console.log("No owner data found, checking if user has their own data")
+                const userData = await getResumeData(user.id)
+
+                const hasUserData =
+                  userData.education.length > 0 ||
+                  userData.experience.length > 0 ||
+                  userData.skills.length > 0 ||
+                  userData.certifications.length > 0 ||
+                  userData.projects.length > 0
+
+                if (hasUserData) {
+                  console.log("User has their own resume data")
+                  setResumeData(userData)
+                  setIsUserData(true)
+                } else {
+                  // No user data either, use default
+                  console.log("No user data found, using default")
+                  setResumeData(defaultResumeData)
+                  setIsUserData(false)
+                }
+              }
+            } catch (error) {
+              console.error("Error fetching owner's public resume:", error)
+              // Try to get user's own data as fallback
+              const userData = await getResumeData(user.id)
+              if (userData && Object.values(userData).some((arr) => arr.length > 0)) {
+                setResumeData(userData)
+                setIsUserData(true)
+              } else {
+                setResumeData(defaultResumeData)
+                setIsUserData(false)
+              }
+            }
+          }
+        } else {
+          // Not logged in, show the owner's resume
+          console.log("User not logged in, fetching public resume data")
+          try {
+            const data = await getPublicResumeData()
+            console.log("Public resume data:", data)
+
+            // Check if we got any data back
+            const hasData =
+              data.education.length > 0 ||
+              data.experience.length > 0 ||
+              data.skills.length > 0 ||
+              data.certifications.length > 0 ||
+              data.projects.length > 0
+
+            if (hasData) {
+              console.log("Found public resume data, using it")
+              setResumeData(data)
+            } else {
+              // If no public data, fall back to default
+              console.log("No public resume data found, using default")
+              setResumeData(defaultResumeData)
+              setLoadError("Could not load the owner's resume data. Using default template instead.")
+            }
+            setIsUserData(false)
+          } catch (error) {
+            console.error("Error fetching public resume:", error)
             setResumeData(defaultResumeData)
             setIsUserData(false)
+            setLoadError("Error loading resume data. Using default template instead.")
           }
-        } catch (error) {
-          console.error("Error loading resume data:", error)
-          setResumeData(defaultResumeData)
-          setIsUserData(false)
         }
-      } else {
-        // Not logged in, use default data
+      } catch (error) {
+        console.error("Error in loadResumeData:", error)
         setResumeData(defaultResumeData)
         setIsUserData(false)
+        setLoadError("An unexpected error occurred. Using default template instead.")
+      } finally {
+        setIsLoadingData(false)
       }
-      setIsLoadingData(false)
     }
 
     loadResumeData()
@@ -222,7 +319,7 @@ export default function ResumePage() {
               <p className="mt-2 text-xl text-gray-300">My professional experience and skills</p>
             </div>
 
-            {user && (
+            {user && isOwner && (
               <div className="mt-4 md:mt-0">
                 <Link href="/resume/edit">
                   <Button className="bg-purple-600 hover:bg-purple-700 text-white">
@@ -235,7 +332,13 @@ export default function ResumePage() {
           </header>
 
           <div className="p-6 bg-gray-800 rounded-xl border border-gray-700">
-            {!isUserData && user && (
+            {loadError && (
+              <div className="mb-6 p-4 bg-red-900/30 border border-red-800/50 rounded-lg">
+                <p className="text-red-300">{loadError}</p>
+              </div>
+            )}
+
+            {!isUserData && user && isOwner && (
               <div className="mb-6 p-4 bg-purple-900/30 border border-purple-800/50 rounded-lg">
                 <p className="text-purple-300">
                   You're currently viewing the default resume template. Click "Edit Resume" to create your own
@@ -244,7 +347,7 @@ export default function ResumePage() {
               </div>
             )}
 
-            <ResumeTimeline data={resumeData} />
+            {resumeData && <ResumeTimeline data={resumeData} />}
           </div>
         </div>
       </main>
