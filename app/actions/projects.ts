@@ -471,23 +471,62 @@ export async function updateProject(formData: FormData) {
   }
 }
 
+// Replace the deleteProject function with this improved version:
+
 export async function deleteProject(projectId: string) {
+  console.log(`=== deleteProject started for project ID: ${projectId} ===`)
+
+  if (!projectId) {
+    console.error("Invalid project ID provided to deleteProject")
+    return {
+      success: false,
+      message: "Invalid project ID",
+    }
+  }
+
   try {
-    const { error } = await supabase.from("projects").delete().eq("id", projectId)
+    // First, delete any associated project images
+    console.log(`Deleting associated project images for project ID: ${projectId}`)
+    const { data: imagesData, error: imagesError } = await supabase
+      .from("project_images")
+      .delete()
+      .eq("project_id", projectId)
+      .select()
+
+    if (imagesError) {
+      console.error("Error deleting project images:", imagesError)
+      // Continue with project deletion even if images deletion fails
+      console.log("Continuing with project deletion despite image deletion error")
+    } else {
+      console.log(`Successfully deleted ${imagesData?.length || 0} associated project images`)
+    }
+
+    // Now delete the project itself
+    console.log(`Deleting project with ID: ${projectId}`)
+    const { data, error } = await supabase.from("projects").delete().eq("id", projectId).select()
 
     if (error) {
-      throw error
+      console.error("Error deleting project:", error)
+      return {
+        success: false,
+        message: `Database error: ${error.message}`,
+      }
     }
+
+    console.log(`Project ${projectId} successfully deleted`)
+    console.log(`=== deleteProject completed for project ID: ${projectId} ===`)
 
     revalidatePath("/dashboard")
     revalidatePath("/projects")
+    revalidatePath("/apps") // Also revalidate apps page since shared projects appear there
 
     return {
       success: true,
       message: "Project deleted successfully",
+      deletedProject: data?.[0] || null,
     }
   } catch (error: any) {
-    console.error("Error deleting project:", error)
+    console.error("Exception in deleteProject function:", error)
     return {
       success: false,
       message: error.message || "Failed to delete project",

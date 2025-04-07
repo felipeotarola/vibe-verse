@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useParams } from "next/navigation" // Add useParams import
 import { ArrowLeft, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -8,12 +9,6 @@ import AppScreenshots from "@/components/app-screenshots"
 import { getProject, type Project } from "@/app/actions/projects"
 import ProjectImageGallery from "@/components/project-image-gallery"
 import { getProjectImages } from "@/app/actions/project-images"
-
-interface AppPageProps {
-  params: {
-    id: string
-  }
-}
 
 // Mock app data
 const mockApps = {
@@ -83,7 +78,9 @@ const mockApps = {
   // Add more mock apps as needed
 }
 
-export default function AppPage({ params }: AppPageProps) {
+export default function AppPage() {
+  const params = useParams() // Use useParams hook
+  const id = params.id as string // Extract id from params
   const [isLoading, setIsLoading] = useState(true)
   const [isProject, setIsProject] = useState(false)
   const [project, setProject] = useState<Project | null>(null)
@@ -93,8 +90,8 @@ export default function AppPage({ params }: AppPageProps) {
   useEffect(() => {
     async function loadData() {
       // First check if this is a mock app
-      if (mockApps[params.id as keyof typeof mockApps]) {
-        setMockApp(mockApps[params.id as keyof typeof mockApps])
+      if (mockApps[id as keyof typeof mockApps]) {
+        setMockApp(mockApps[id as keyof typeof mockApps])
         setIsProject(false)
         setIsLoading(false)
         return
@@ -102,7 +99,7 @@ export default function AppPage({ params }: AppPageProps) {
 
       // If not a mock app, try to load as a shared project
       try {
-        const projectData = await getProject(params.id)
+        const projectData = await getProject(id)
 
         // Only show the project if it's shared
         if (projectData && projectData.is_shared) {
@@ -110,7 +107,7 @@ export default function AppPage({ params }: AppPageProps) {
           setIsProject(true)
 
           // Load project images
-          const imagesData = await getProjectImages(params.id)
+          const imagesData = await getProjectImages(id)
 
           // If we have images, use them; otherwise, create an array with the main image
           if (imagesData && imagesData.length > 0) {
@@ -130,7 +127,7 @@ export default function AppPage({ params }: AppPageProps) {
     }
 
     loadData()
-  }, [params.id])
+  }, [id])
 
   if (isLoading) {
     return (
@@ -205,7 +202,7 @@ export default function AppPage({ params }: AppPageProps) {
                   </span>
                 </div>
                 <div className="mt-4">
-                  <a href={`https://app-${params.id}.copernic.dev`} target="_blank" rel="noopener noreferrer">
+                  <a href={`https://app-${id}.copernic.dev`} target="_blank" rel="noopener noreferrer">
                     <Button className="px-8 py-2 text-white bg-purple-600 hover:bg-purple-700">Open App</Button>
                   </a>
                 </div>

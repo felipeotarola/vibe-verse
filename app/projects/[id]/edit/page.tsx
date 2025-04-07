@@ -1,22 +1,18 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation" // Add useParams import
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { getProject, type Project } from "@/app/actions/projects"
 import ProjectForm from "@/components/project-form"
 
-interface EditProjectPageProps {
-  params: {
-    id: string
-  }
-}
-
-export default function EditProjectPage({ params }: EditProjectPageProps) {
+export default function EditProjectPage() {
   const { user, isLoading } = useAuth()
   const router = useRouter()
+  const params = useParams() // Use useParams hook
+  const id = params.id as string // Extract id from params
   const [project, setProject] = useState<Project | null>(null)
   const [isLoadingProject, setIsLoadingProject] = useState(true)
 
@@ -30,13 +26,13 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
     async function loadProject() {
       try {
         // Skip loading if the ID is "new" or "new-project" - these are special routes
-        if (params.id === "new" || params.id === "new-project") {
+        if (id === "new" || id === "new-project") {
           // Instead of redirecting, just set loading to false and return
           setIsLoadingProject(false)
           return
         }
 
-        const projectData = await getProject(params.id)
+        const projectData = await getProject(id)
         setProject(projectData)
         setIsLoadingProject(false)
       } catch (error) {
@@ -45,10 +41,10 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
       }
     }
 
-    if (params.id) {
+    if (id) {
       loadProject()
     }
-  }, [params.id, router])
+  }, [id, router]) // Update dependency array to use id
 
   if (isLoading || isLoadingProject) {
     return (
@@ -63,8 +59,8 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
   }
 
   // If we're on the "new" or "new-project" route, render the new project page
-  if (params.id === "new" || params.id === "new-project") {
-    router.push("/projects/new")
+  if (id === "new" || id === "new-project") {
+    router.push("/projects/new-project")
     return null
   }
 
@@ -72,6 +68,14 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
     return (
       <main className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 text-white">
         <div className="container px-4 py-8 mx-auto">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center mb-6 text-sm font-medium text-gray-400 hover:text-white"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Dashboard
+          </Link>
+
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <h1 className="text-2xl font-bold text-white">Project Not Found</h1>

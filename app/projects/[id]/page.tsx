@@ -3,23 +3,12 @@
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Calendar, ExternalLink, Github, Edit, Trash2, AlertCircle, Code } from "lucide-react"
+import { ArrowLeft, Calendar, ExternalLink, Github, Edit, Trash2, AlertCircle, Code, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
 import { getProject, deleteProject, type Project } from "@/app/actions/projects"
 import { useToast } from "@/components/ui/use-toast"
 import { Badge } from "@/components/ui/badge"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
 import ProjectImageGallery from "@/components/project-image-gallery"
 import { getProjectImages } from "@/app/actions/project-images"
 
@@ -57,17 +46,20 @@ const TECH_CATEGORIES = [
 const FLAT_TECH_STACK = TECH_CATEGORIES.flatMap((category) => category.items)
 
 export default function ProjectPage() {
-  const { id } = useParams()
   const { user, isLoading } = useAuth()
   const router = useRouter()
+  const params = useParams()
+  const id = params.id as string
   const { toast } = useToast()
-
   const [project, setProject] = useState<Project | null>(null)
   const [isLoadingProject, setIsLoadingProject] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
   const [techStack, setTechStack] = useState<string[]>([])
   const [isOwner, setIsOwner] = useState(false)
   const [projectImages, setProjectImages] = useState<{ id?: string; image_url: string }[]>([])
+
+  // New state for delete confirmation
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   useEffect(() => {
     // If not logged in, redirect to login page
@@ -82,11 +74,12 @@ export default function ProjectPage() {
         try {
           // Skip loading if the ID is "new" or "new-project" - these are special routes
           if (id === "new" || id === "new-project") {
+            // Instead of redirecting, just set loading to false and return
             setIsLoadingProject(false)
             return
           }
 
-          const projectData = await getProject(id as string)
+          const projectData = await getProject(id)
           setProject(projectData)
 
           // Check if the current user is the owner of the project
@@ -112,11 +105,13 @@ export default function ProjectPage() {
           }
 
           // Load project images
-          const imagesData = await getProjectImages(id as string)
+          const imagesData = await getProjectImages(id)
 
+          // If we have images, use them; otherwise, create an array with the main image
           if (imagesData && imagesData.length > 0) {
             setProjectImages(imagesData)
           } else if (projectData.image_url) {
+            // If no additional images but we have a main image, use that
             setProjectImages([{ image_url: projectData.image_url }])
           } else {
             setProjectImages([])
@@ -136,37 +131,56 @@ export default function ProjectPage() {
   }, [id, router, user])
 
   const handleDeleteProject = async () => {
-    if (!project) return
+    console.log("handleDeleteProject function called")
+    console.log("Current project:", project)
 
+    if (!project) {
+      console.error("Cannot delete: project is null")
+      toast({
+        title: "Error",
+        description: "Cannot delete: project information is missing",
+        variant: "destructive",
+      })
+      return
+    }
+
+    console.log(`Starting deletion process for project: ${project.id}`)
     setIsDeleting(true)
 
     try {
+      console.log("Calling deleteProject server action")
       const result = await deleteProject(project.id)
+      console.log("Delete result:", result)
 
       if (result.success) {
         toast({
           title: "Project deleted",
-          description: "Your project has been deleted successfully.",
+          description: "Your project has been successfully deleted from the database.",
         })
+        console.log("Redirecting to dashboard")
         router.push("/dashboard")
       } else {
+        console.error("Server returned error:", result.message)
         toast({
-          title: "Error",
-          description: result.message,
+          title: "Error deleting project",
+          description: result.message || "There was a problem deleting your project.",
           variant: "destructive",
         })
       }
     } catch (error: any) {
+      console.error("Exception during project deletion:", error)
       toast({
         title: "Error",
-        description: error.message || "An error occurred while deleting the project.",
+        description: error.message || "An unexpected error occurred while deleting the project.",
         variant: "destructive",
       })
     } finally {
       setIsDeleting(false)
+      setShowDeleteConfirm(false)
     }
   }
 
+  // Helper function to get tech item label from value
   const getStackItemLabel = (value: string) => {
     const item = FLAT_TECH_STACK.find((item) => item.value === value)
     return item ? item.label : value
@@ -184,7 +198,7 @@ export default function ProjectPage() {
     )
   }
 
-  // Redirect if on "new" or "new-project" route
+  // If we're on the "new" or "new-project" route, render the new project page
   if (id === "new" || id === "new-project") {
     router.push("/projects/new-project")
     return null
@@ -231,10 +245,7 @@ export default function ProjectPage() {
         <div className="p-6 bg-gray-800 rounded-xl border border-gray-700">
           <div className="flex flex-col md:flex-row gap-8">
             <div className="md:w-1/3">
-              <ProjectImageGallery
-                images={projectImages}
-                className="w-full"
-              />
+              <ProjectImageGallery images={projectImages} className="w-full" />
 
               <div className="mt-6 space-y-4">
                 <div>
@@ -302,34 +313,18 @@ export default function ProjectPage() {
                       </Button>
                     </Link>
 
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700">
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent className="bg-gray-800 border-gray-700 text-white">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                          <AlertDialogDescription className="text-gray-300">
-                            This action cannot be undone. This will permanently delete your project.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel className="border-gray-600 text-gray-300 hover:bg-gray-700">
-                            Cancel
-                          </AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={handleDeleteProject}
-                            disabled={isDeleting}
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                          >
-                            {isDeleting ? "Deleting..." : "Delete"}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="bg-red-600 hover:bg-red-700"
+                      onClick={() => {
+                        console.log("Delete button clicked")
+                        setShowDeleteConfirm(true)
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </Button>
                   </div>
                 )}
               </div>
@@ -370,6 +365,54 @@ export default function ProjectPage() {
           </div>
         </div>
       </div>
+
+      {/* Custom Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-white">Confirm Deletion</h3>
+              <button onClick={() => setShowDeleteConfirm(false)} className="text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-gray-300 mb-6">
+              Are you sure you want to delete this project? This action cannot be undone.
+            </p>
+
+            <div className="flex justify-end space-x-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="border-gray-600 text-gray-300 hover:bg-gray-700"
+              >
+                Cancel
+              </Button>
+
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  console.log("Confirm delete button clicked")
+                  handleDeleteProject()
+                }}
+                disabled={isDeleting}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Project"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
+
