@@ -1,7 +1,8 @@
-import { Github, Twitter, Linkedin, Mail, Zap } from "lucide-react"
+import { Github, Twitter, Linkedin, Mail, Zap, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import GitHubContributionGraph from "@/components/github-contribution-graph"
 import SparklesBackground from "@/components/sparkles-background"
+import Link from "next/link"
 
 // GitHub username configuration - using your actual GitHub account
 const GITHUB_USERNAME = "felipeotarola"
@@ -70,6 +71,13 @@ export default function AboutPage() {
                   </Button>
                 </a>
               </div>
+
+              <Link href="/resume" className="mt-6">
+                <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+                  <FileText className="w-4 h-4 mr-2" />
+                  View My Resume
+                </Button>
+              </Link>
             </div>
 
             <div className="lg:col-span-2">

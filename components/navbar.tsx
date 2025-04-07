@@ -75,6 +75,9 @@ export default function Navbar() {
               <Link href="/about" className="text-sm font-medium text-gray-300 hover:text-white">
                 About
               </Link>
+              <Link href="/resume" className="text-sm font-medium text-gray-300 hover:text-white">
+                Resume
+              </Link>
             </div>
             <div className="flex items-center space-x-3">
               {user ? (
@@ -185,6 +188,13 @@ export default function Navbar() {
               onClick={() => setIsMenuOpen(false)}
             >
               About
+            </Link>
+            <Link
+              href="/resume"
+              className="text-sm font-medium text-gray-300 hover:text-white"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Resume
             </Link>
             <div className="flex flex-col space-y-2 pt-2 border-t border-gray-700">
               {user ? (

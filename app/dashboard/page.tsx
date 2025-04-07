@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { Plus, User, Settings } from "lucide-react"
+import { Plus, User, Settings, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
 import { getProfile } from "@/app/actions/profile"
@@ -171,10 +171,16 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="mt-6">
+              <div className="mt-6 space-y-3">
                 <Link href="/profile">
                   <Button variant="outline" className="w-full border-gray-600 text-gray-300 hover:bg-gray-700">
                     Edit Profile
+                  </Button>
+                </Link>
+                <Link href="/resume/edit">
+                  <Button variant="outline" className="w-full border-gray-600 text-gray-300 hover:bg-gray-700">
+                    <FileText className="w-4 h-4 mr-2" />
+                    Edit Resume
                   </Button>
                 </Link>
               </div>
