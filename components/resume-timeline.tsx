@@ -21,6 +21,7 @@ interface TimelineItemProps {
   logo?: string
   side?: "left" | "right"
   isLast?: boolean
+  is_contract?: boolean
 }
 
 interface SkillItem {
@@ -72,6 +73,7 @@ function TimelineItem({
   logo,
   side = "left",
   isLast = false,
+  is_contract = false,
 }: TimelineItemProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
@@ -100,7 +102,10 @@ function TimelineItem({
 
               <div className="flex-grow">
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-2">
-                  <h3 className="text-xl font-semibold text-white">{title}</h3>
+                  <h3 className="text-xl font-semibold text-white flex items-center">
+                    {title}
+                    {is_contract && <span className="ml-2 text-purple-400 text-sm font-normal">(Contract)</span>}
+                  </h3>
                   <span className="text-sm text-purple-400 font-medium">{period}</span>
                 </div>
 

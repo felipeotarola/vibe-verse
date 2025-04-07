@@ -24,6 +24,7 @@ export interface ExperienceItem {
   description: string
   achievements?: string[]
   logo_url?: string
+  is_contract?: boolean
 }
 
 export interface SkillItem {
@@ -61,22 +62,71 @@ export interface ResumeData {
   projects: ProjectItem[]
 }
 
+// Helper function to compare periods for sorting
+function comparePeriods(a: string, b: string): number {
+  // Extract end dates from periods (format: "Month Year - Month Year" or "Month Year - Present")
+  const aEndPart = a.split(" - ")[1]?.trim() || ""
+  const bEndPart = b.split(" - ")[1]?.trim() || ""
+
+  // Present is always the most recent
+  if (aEndPart === "Present" && bEndPart !== "Present") return -1
+  if (aEndPart !== "Present" && bEndPart === "Present") return 1
+  if (aEndPart === "Present" && bEndPart === "Present") {
+    // If both are present, compare start dates
+    const aStartPart = a.split(" - ")[0]?.trim() || ""
+    const bStartPart = b.split(" - ")[0]?.trim() || ""
+    return compareMonthYear(bStartPart, aStartPart) // Reverse order for start dates
+  }
+
+  // Compare end dates
+  return compareMonthYear(bEndPart, aEndPart)
+}
+
+// Helper function to compare month-year strings
+function compareMonthYear(a: string, b: string): number {
+  const months = {
+    January: 0,
+    February: 1,
+    March: 2,
+    April: 3,
+    May: 4,
+    June: 5,
+    July: 6,
+    August: 7,
+    September: 8,
+    October: 9,
+    November: 10,
+    December: 11,
+  }
+
+  const aParts = a.split(" ")
+  const bParts = b.split(" ")
+
+  const aYear = Number.parseInt(aParts[1] || "0", 10)
+  const bYear = Number.parseInt(bParts[1] || "0", 10)
+
+  if (aYear !== bYear) return aYear - bYear
+
+  const aMonth = months[aParts[0] as keyof typeof months] || 0
+  const bMonth = months[bParts[0] as keyof typeof months] || 0
+
+  return aMonth - bMonth
+}
+
 // Get all resume data for a user
 export async function getResumeData(userId: string): Promise<ResumeData> {
   try {
     // Get education
-    const { data: education } = await supabase
-      .from("resume_education")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
+    const { data: education } = await supabase.from("resume_education").select("*").eq("user_id", userId)
+
+    // Sort education by period (newest first)
+    const sortedEducation = education ? [...education].sort((a, b) => comparePeriods(a.period, b.period)) : []
 
     // Get experience
-    const { data: experience } = await supabase
-      .from("resume_experience")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
+    const { data: experience } = await supabase.from("resume_experience").select("*").eq("user_id", userId)
+
+    // Sort experience by period (newest first)
+    const sortedExperience = experience ? [...experience].sort((a, b) => comparePeriods(a.period, b.period)) : []
 
     // Get skills
     const { data: skills } = await supabase
@@ -100,8 +150,8 @@ export async function getResumeData(userId: string): Promise<ResumeData> {
       .order("created_at", { ascending: false })
 
     return {
-      education: education || [],
-      experience: experience || [],
+      education: sortedEducation || [],
+      experience: sortedExperience || [],
       skills: skills || [],
       certifications: certifications || [],
       projects: projects || [],
@@ -213,6 +263,9 @@ export async function saveExperience(formData: FormData) {
     const logoFile = formData.get("logo") as File
     const currentLogoUrl = formData.get("currentLogoUrl") as string
 
+    // Fix this line to properly handle the checkbox value
+    const isContract = formData.get("is_contract") === "on"
+
     let logo_url = currentLogoUrl
 
     // Upload logo if provided
@@ -234,6 +287,7 @@ export async function saveExperience(formData: FormData) {
       description,
       achievements: achievementsArray,
       logo_url,
+      is_contract: isContract,
       updated_at: new Date().toISOString(),
     }
 

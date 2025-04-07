@@ -31,7 +31,6 @@ import {
   type SkillCategory as SkillCategoryType,
   type CertificationItem,
   type ProjectItem,
-  type SkillItem,
 } from "@/app/actions/resume"
 import Link from "next/link"
 
@@ -221,6 +220,24 @@ function EducationTab({
 
     try {
       const formData = new FormData(e.currentTarget)
+
+      // Combine period start and end
+      const startMonth = formData.get("period-start-month") as string
+      const startYear = formData.get("period-start-year") as string
+      const endMonth = formData.get("period-end-month") as string
+      const endYear = (formData.get("period-end-year") as string) || "Present"
+
+      const periodStart = `${startMonth} ${startYear}`
+      const periodEnd = document.getElementById("edu-is-current")?.checked ? "Present" : `${endMonth} ${endYear}`
+      const period = `${periodStart} - ${periodEnd}`
+
+      // Remove the individual period fields and add the combined one
+      formData.delete("period-start-month")
+      formData.delete("period-start-year")
+      formData.delete("period-end-month")
+      formData.delete("period-end-year")
+      formData.append("period", period)
+
       formData.append("userId", userId)
 
       const result = await saveEducation(formData)
@@ -308,6 +325,36 @@ function EducationTab({
     )
   }
 
+  // Parse period into start and end components
+  const parsePeriod = (period: string) => {
+    const parts = period.split(" - ")
+    const startParts = parts[0]?.trim().split(" ") || ["", ""]
+    const endParts = parts[1]?.trim() === "Present" ? ["Present", ""] : parts[1]?.trim().split(" ") || ["", ""]
+
+    return {
+      startMonth: startParts[0] || "",
+      startYear: startParts[1] || "",
+      endMonth: endParts[0] === "Present" ? "" : endParts[0] || "",
+      endYear: endParts[0] === "Present" ? "Present" : endParts[1] || "",
+      isPresent: endParts[0] === "Present",
+    }
+  }
+
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ]
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -361,24 +408,133 @@ function EducationTab({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    name="location"
-                    defaultValue={editingId ? getEducationItem(editingId).location : ""}
-                    className="bg-gray-700 border-gray-600"
-                  />
+                  <div className="relative">
+                    <select
+                      id="edu-location-select"
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent appearance-none"
+                      onChange={(e) => {
+                        const input = document.getElementById("location") as HTMLInputElement
+                        if (input && e.target.value !== "custom") {
+                          input.value = e.target.value
+                        }
+                      }}
+                      defaultValue="custom"
+                    >
+                      <option value="custom">Custom location...</option>
+                      <option value="Stockholm, Sweden">Stockholm, Sweden</option>
+                      <option value="Oslo, Norway">Oslo, Norway</option>
+                      <option value="Copenhagen, Denmark">Copenhagen, Denmark</option>
+                      <option value="Helsinki, Finland">Helsinki, Finland</option>
+                      <option value="London, UK">London, UK</option>
+                      <option value="Berlin, Germany">Berlin, Germany</option>
+                      <option value="Paris, France">Paris, France</option>
+                      <option value="New York, USA">New York, USA</option>
+                      <option value="San Francisco, USA">San Francisco, USA</option>
+                      <option value="Remote">Remote</option>
+                    </select>
+                    <Input
+                      id="location"
+                      name="location"
+                      defaultValue={editingId ? getEducationItem(editingId).location : ""}
+                      className="absolute inset-0 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                      placeholder="Enter location"
+                      onFocus={() => {
+                        const select = document.getElementById("edu-location-select") as HTMLSelectElement
+                        if (select) {
+                          select.value = "custom"
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="period">Period</Label>
-                  <Input
-                    id="period"
-                    name="period"
-                    defaultValue={editingId ? getEducationItem(editingId).period : ""}
-                    required
-                    placeholder="e.g., 2018 - 2022"
-                    className="bg-gray-700 border-gray-600"
-                  />
+                  <div className="space-y-2">
+                    {/* Start date with month and year */}
+                    <div className="flex gap-2 items-center">
+                      <Label className="w-10 text-xs">Start:</Label>
+                      <select
+                        id="edu-period-start-month"
+                        name="period-start-month"
+                        className="bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent flex-1"
+                        defaultValue={editingId ? parsePeriod(getEducationItem(editingId).period).startMonth : ""}
+                        required
+                      >
+                        <option value="" disabled>
+                          Month
+                        </option>
+                        {months.map((month) => (
+                          <option key={month} value={month}>
+                            {month}
+                          </option>
+                        ))}
+                      </select>
+                      <Input
+                        id="edu-period-start-year"
+                        name="period-start-year"
+                        defaultValue={editingId ? parsePeriod(getEducationItem(editingId).period).startYear : ""}
+                        required
+                        placeholder="Year"
+                        className="bg-gray-700 border-gray-600 w-24"
+                      />
+                    </div>
+
+                    {/* End date with month and year */}
+                    <div className="flex gap-2 items-center">
+                      <Label className="w-10 text-xs">End:</Label>
+                      <select
+                        id="edu-period-end-month"
+                        name="period-end-month"
+                        className="bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent flex-1"
+                        defaultValue={editingId ? parsePeriod(getEducationItem(editingId).period).endMonth : ""}
+                        disabled={document.getElementById("edu-is-current")?.checked}
+                      >
+                        <option value="" disabled>
+                          Month
+                        </option>
+                        {months.map((month) => (
+                          <option key={month} value={month}>
+                            {month}
+                          </option>
+                        ))}
+                      </select>
+                      <Input
+                        id="edu-period-end-year"
+                        name="period-end-year"
+                        defaultValue={
+                          editingId
+                            ? parsePeriod(getEducationItem(editingId).period).endYear === "Present"
+                              ? ""
+                              : parsePeriod(getEducationItem(editingId).period).endYear
+                            : ""
+                        }
+                        placeholder="Year"
+                        className="bg-gray-700 border-gray-600 w-24"
+                        disabled={document.getElementById("edu-is-current")?.checked}
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="edu-is-current"
+                        className="w-4 h-4 bg-gray-700 border-gray-600 rounded text-purple-600 focus:ring-purple-600"
+                        onChange={(e) => {
+                          const endMonthSelect = document.getElementById("edu-period-end-month") as HTMLSelectElement
+                          const endYearInput = document.getElementById("edu-period-end-year") as HTMLInputElement
+                          if (endMonthSelect && endYearInput) {
+                            endMonthSelect.disabled = e.target.checked
+                            endYearInput.disabled = e.target.checked
+                          }
+                        }}
+                        defaultChecked={editingId && parsePeriod(getEducationItem(editingId).period).isPresent}
+                      />
+                      <Label htmlFor="edu-is-current" className="text-sm text-gray-300">
+                        Currently studying
+                      </Label>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -516,12 +672,35 @@ function ExperienceTab({
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // Modify the handleSubmit function to combine period start and end
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSaving(true)
 
     try {
       const formData = new FormData(e.currentTarget)
+
+      // Combine period start and end
+      const startMonth = formData.get("period-start-month") as string
+      const startYear = formData.get("period-start-year") as string
+      const endMonth = formData.get("period-end-month") as string
+      const endYear = (formData.get("period-end-year") as string) || "Present"
+
+      const periodStart = `${startMonth} ${startYear}`
+      const periodEnd = document.getElementById("is-current")?.checked ? "Present" : `${endMonth} ${endYear}`
+      const period = `${periodStart} - ${periodEnd}`
+
+      // Remove the individual period fields and add the combined one
+      formData.delete("period-start-month")
+      formData.delete("period-start-year")
+      formData.delete("period-end-month")
+      formData.delete("period-end-year")
+      formData.append("period", period)
+
+      // Get the contract status
+      const isContract = (document.getElementById("is-contract") as HTMLInputElement)?.checked || false
+      formData.append("is_contract", isContract.toString())
+
       formData.append("userId", userId)
 
       const result = await saveExperience(formData)
@@ -605,9 +784,40 @@ function ExperienceTab({
         description: "",
         achievements: [],
         logo_url: "",
+        is_contract: false,
       }
     )
   }
+
+  // Parse period into start and end components
+  const parsePeriod = (period: string) => {
+    const parts = period.split(" - ")
+    const startParts = parts[0]?.trim().split(" ") || ["", ""]
+    const endParts = parts[1]?.trim() === "Present" ? ["Present", ""] : parts[1]?.trim().split(" ") || ["", ""]
+
+    return {
+      startMonth: startParts[0] || "",
+      startYear: startParts[1] || "",
+      endMonth: endParts[0] === "Present" ? "" : endParts[0] || "",
+      endYear: endParts[0] === "Present" ? "Present" : endParts[1] || "",
+      isPresent: endParts[0] === "Present",
+    }
+  }
+
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ]
 
   return (
     <div>
@@ -662,24 +872,148 @@ function ExperienceTab({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    name="location"
-                    defaultValue={editingId ? getExperienceItem(editingId).location : ""}
-                    className="bg-gray-700 border-gray-600"
-                  />
+                  <div className="relative">
+                    <select
+                      id="location-select"
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent appearance-none"
+                      onChange={(e) => {
+                        const input = document.getElementById("location") as HTMLInputElement
+                        if (input && e.target.value !== "custom") {
+                          input.value = e.target.value
+                        }
+                      }}
+                      defaultValue="custom"
+                    >
+                      <option value="custom">Custom location...</option>
+                      <option value="Stockholm, Sweden">Stockholm, Sweden</option>
+                      <option value="Oslo, Norway">Oslo, Norway</option>
+                      <option value="Copenhagen, Denmark">Copenhagen, Denmark</option>
+                      <option value="Helsinki, Finland">Helsinki, Finland</option>
+                      <option value="London, UK">London, UK</option>
+                      <option value="Berlin, Germany">Berlin, Germany</option>
+                      <option value="Paris, France">Paris, France</option>
+                      <option value="New York, USA">New York, USA</option>
+                      <option value="San Francisco, USA">San Francisco, USA</option>
+                      <option value="Remote">Remote</option>
+                    </select>
+                    <Input
+                      id="location"
+                      name="location"
+                      defaultValue={editingId ? getExperienceItem(editingId).location : ""}
+                      className="absolute inset-0 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                      placeholder="Enter location"
+                      onFocus={() => {
+                        const select = document.getElementById("location-select") as HTMLSelectElement
+                        if (select) {
+                          select.value = "custom"
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="period">Period</Label>
-                  <Input
-                    id="period"
-                    name="period"
-                    defaultValue={editingId ? getExperienceItem(editingId).period : ""}
-                    required
-                    placeholder="e.g., 2020 - Present"
-                    className="bg-gray-700 border-gray-600"
+                  <div className="space-y-2">
+                    {/* Start date with month and year */}
+                    <div className="flex gap-2 items-center">
+                      <Label className="w-10 text-xs">Start:</Label>
+                      <select
+                        id="period-start-month"
+                        name="period-start-month"
+                        className="bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent flex-1"
+                        defaultValue={editingId ? parsePeriod(getExperienceItem(editingId).period).startMonth : ""}
+                        required
+                      >
+                        <option value="" disabled>
+                          Month
+                        </option>
+                        {months.map((month) => (
+                          <option key={month} value={month}>
+                            {month}
+                          </option>
+                        ))}
+                      </select>
+                      <Input
+                        id="period-start-year"
+                        name="period-start-year"
+                        defaultValue={editingId ? parsePeriod(getExperienceItem(editingId).period).startYear : ""}
+                        required
+                        placeholder="Year"
+                        className="bg-gray-700 border-gray-600 w-24"
+                      />
+                    </div>
+
+                    {/* End date with month and year */}
+                    <div className="flex gap-2 items-center">
+                      <Label className="w-10 text-xs">End:</Label>
+                      <select
+                        id="period-end-month"
+                        name="period-end-month"
+                        className="bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent flex-1"
+                        defaultValue={editingId ? parsePeriod(getExperienceItem(editingId).period).endMonth : ""}
+                        disabled={document.getElementById("is-current")?.checked}
+                      >
+                        <option value="" disabled>
+                          Month
+                        </option>
+                        {months.map((month) => (
+                          <option key={month} value={month}>
+                            {month}
+                          </option>
+                        ))}
+                      </select>
+                      <Input
+                        id="period-end-year"
+                        name="period-end-year"
+                        defaultValue={
+                          editingId
+                            ? parsePeriod(getExperienceItem(editingId).period).endYear === "Present"
+                              ? ""
+                              : parsePeriod(getExperienceItem(editingId).period).endYear
+                            : ""
+                        }
+                        placeholder="Year"
+                        className="bg-gray-700 border-gray-600 w-24"
+                        disabled={document.getElementById("is-current")?.checked}
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="is-current"
+                        className="w-4 h-4 bg-gray-700 border-gray-600 rounded text-purple-600 focus:ring-purple-600"
+                        onChange={(e) => {
+                          const endMonthSelect = document.getElementById("period-end-month") as HTMLSelectElement
+                          const endYearInput = document.getElementById("period-end-year") as HTMLInputElement
+                          if (endMonthSelect && endYearInput) {
+                            endMonthSelect.disabled = e.target.checked
+                            endYearInput.disabled = e.target.checked
+                          }
+                        }}
+                        defaultChecked={editingId && parsePeriod(getExperienceItem(editingId).period).isPresent}
+                      />
+                      <Label htmlFor="is-current" className="text-sm text-gray-300">
+                        Current position
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="is-contract"
+                    name="is_contract"
+                    className="w-4 h-4 bg-gray-700 border-gray-600 rounded text-purple-600 focus:ring-purple-600"
+                    defaultChecked={editingId ? !!getExperienceItem(editingId).is_contract : false}
                   />
+                  <Label htmlFor="is-contract" className="text-sm text-gray-300">
+                    This was a contract/consultant position
+                  </Label>
                 </div>
               </div>
 
@@ -755,7 +1089,10 @@ function ExperienceTab({
               <CardContent className="p-6">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="text-xl font-semibold text-white">{item.title}</h3>
+                    <h3 className="text-xl font-semibold text-white">
+                      {item.title}
+                      {item.is_contract && <span className="ml-2 text-purple-400 text-sm">(Contract)</span>}
+                    </h3>
                     <p className="text-gray-300">
                       {item.organization} {item.location ? `• ${item.location}` : ""}
                     </p>
@@ -821,18 +1158,6 @@ function SkillsTab({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [skillItems, setSkillItems] = useState<SkillItem[]>([])
-
-  useEffect(() => {
-    if (editingId) {
-      const category = skills.find((item) => item.id === editingId)
-      if (category) {
-        setSkillItems(category.items || [])
-      }
-    } else {
-      setSkillItems([{ name: "", level: 50 }])
-    }
-  }, [editingId, skills])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -841,7 +1166,6 @@ function SkillsTab({
     try {
       const formData = new FormData(e.currentTarget)
       formData.append("userId", userId)
-      formData.append("items", JSON.stringify(skillItems))
 
       const result = await saveSkillCategory(formData)
 
@@ -866,7 +1190,7 @@ function SkillsTab({
         })
       }
     } catch (error) {
-      console.error("Error saving skills:", error)
+      console.error("Error saving skill category:", error)
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -913,28 +1237,14 @@ function SkillsTab({
     }
   }
 
-  const getSkillCategory = (id: string) => {
+  const getSkillCategoryItem = (id: string) => {
     return (
       skills.find((item) => item.id === id) || {
         id: "new",
-        category: "",
-        items: [],
+        name: "",
+        skills: [],
       }
     )
-  }
-
-  const addSkillItem = () => {
-    setSkillItems([...skillItems, { name: "", level: 50 }])
-  }
-
-  const removeSkillItem = (index: number) => {
-    setSkillItems(skillItems.filter((_, i) => i !== index))
-  }
-
-  const updateSkillItem = (index: number, field: keyof SkillItem, value: string | number) => {
-    const newItems = [...skillItems]
-    newItems[index] = { ...newItems[index], [field]: value }
-    setSkillItems(newItems)
   }
 
   return (
@@ -945,7 +1255,6 @@ function SkillsTab({
           onClick={() => {
             setIsAdding(true)
             setEditingId(null)
-            setSkillItems([{ name: "", level: 50 }])
           }}
           className="bg-purple-600 hover:bg-purple-700 text-white"
           disabled={isAdding || editingId !== null}
@@ -965,70 +1274,25 @@ function SkillsTab({
               <input type="hidden" name="id" value={editingId || "new"} />
 
               <div className="space-y-2">
-                <Label htmlFor="category">Category Name</Label>
+                <Label htmlFor="name">Category Name</Label>
                 <Input
-                  id="category"
-                  name="category"
-                  defaultValue={editingId ? getSkillCategory(editingId).category : ""}
+                  id="name"
+                  name="name"
+                  defaultValue={editingId ? getSkillCategoryItem(editingId).name : ""}
                   required
-                  placeholder="e.g., Programming Languages"
                   className="bg-gray-700 border-gray-600"
                 />
               </div>
 
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <Label>Skills</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addSkillItem}
-                    className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Skill
-                  </Button>
-                </div>
-
-                {skillItems.map((item, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                    <div className="md:col-span-5">
-                      <Input
-                        value={item.name}
-                        onChange={(e) => updateSkillItem(index, "name", e.target.value)}
-                        placeholder="Skill name"
-                        required
-                        className="bg-gray-700 border-gray-600"
-                      />
-                    </div>
-                    <div className="md:col-span-5">
-                      <div className="flex items-center">
-                        <Input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={item.level}
-                          onChange={(e) => updateSkillItem(index, "level", Number.parseInt(e.target.value))}
-                          className="mr-2"
-                        />
-                        <span className="text-gray-300 w-10">{item.level}%</span>
-                      </div>
-                    </div>
-                    <div className="md:col-span-2 flex justify-end">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeSkillItem(index)}
-                        disabled={skillItems.length <= 1}
-                        className="border-red-800 text-red-400 hover:bg-red-900/20"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+              <div className="space-y-2">
+                <Label htmlFor="skills">Skills (comma separated)</Label>
+                <Input
+                  id="skills"
+                  name="skills"
+                  defaultValue={editingId ? getSkillCategoryItem(editingId).skills?.join(", ") : ""}
+                  placeholder="e.g., Machine Learning, Data Analysis, Python"
+                  className="bg-gray-700 border-gray-600"
+                />
               </div>
 
               <div className="flex justify-end space-x-2 pt-4">
@@ -1064,38 +1328,24 @@ function SkillsTab({
 
       {skills.length > 0 ? (
         <div className="space-y-4">
-          {skills.map((category) => (
-            <Card key={category.id} className="bg-gray-800 border-gray-700">
+          {skills.map((item) => (
+            <Card key={item.id} className="bg-gray-800 border-gray-700">
               <CardContent className="p-6">
                 <div className="flex justify-between items-start">
-                  <div className="w-full">
-                    <h3 className="text-xl font-semibold text-white mb-4">{category.category}</h3>
-                    <div className="space-y-3">
-                      {category.items.map((skill, index) => (
-                        <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
-                          <div className="md:col-span-3">
-                            <span className="text-gray-300">{skill.name}</span>
-                          </div>
-                          <div className="md:col-span-8">
-                            <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-full"
-                                style={{ width: `${skill.level}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                          <div className="md:col-span-1 text-right">
-                            <span className="text-purple-400 text-sm">{skill.level}%</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-white">{item.name}</h3>
+                    {item.skills && item.skills.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-400">Skills:</p>
+                        <p className="text-gray-300">{item.skills.join(", ")}</p>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex space-x-2 ml-4">
+                  <div className="flex space-x-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setEditingId(category.id)}
+                      onClick={() => setEditingId(item.id)}
                       className="border-gray-600 text-gray-300 hover:bg-gray-700"
                     >
                       Edit
@@ -1103,7 +1353,7 @@ function SkillsTab({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDelete(category.id)}
+                      onClick={() => handleDelete(item.id)}
                       className="border-red-800 text-red-400 hover:bg-red-900/20"
                       disabled={isDeleting}
                     >
@@ -1225,8 +1475,10 @@ function CertificationsTab({
         id: "new",
         title: "",
         organization: "",
-        date: "",
-        logo_url: "",
+        issue_date: "",
+        expiration_date: "",
+        credential_id: "",
+        credential_url: "",
       }
     )
   }
@@ -1259,7 +1511,7 @@ function CertificationsTab({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="title">Certification Name</Label>
+                  <Label htmlFor="title">Title</Label>
                   <Input
                     id="title"
                     name="title"
@@ -1270,7 +1522,7 @@ function CertificationsTab({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="organization">Issuing Organization</Label>
+                  <Label htmlFor="organization">Organization</Label>
                   <Input
                     id="organization"
                     name="organization"
@@ -1283,27 +1535,47 @@ function CertificationsTab({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="date">Date</Label>
+                  <Label htmlFor="issue_date">Issue Date</Label>
                   <Input
-                    id="date"
-                    name="date"
-                    defaultValue={editingId ? getCertificationItem(editingId).date : ""}
-                    required
-                    placeholder="e.g., May 2021"
+                    id="issue_date"
+                    name="issue_date"
+                    type="date"
+                    defaultValue={editingId ? getCertificationItem(editingId).issue_date : ""}
                     className="bg-gray-700 border-gray-600"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="currentLogoUrl">Logo URL</Label>
+                  <Label htmlFor="expiration_date">Expiration Date</Label>
                   <Input
-                    id="currentLogoUrl"
-                    name="currentLogoUrl"
-                    defaultValue={editingId ? getCertificationItem(editingId).logo_url : ""}
-                    placeholder="URL to certification logo"
+                    id="expiration_date"
+                    name="expiration_date"
+                    type="date"
+                    defaultValue={editingId ? getCertificationItem(editingId).expiration_date : ""}
                     className="bg-gray-700 border-gray-600"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="credential_id">Credential ID</Label>
+                <Input
+                  id="credential_id"
+                  name="credential_id"
+                  defaultValue={editingId ? getCertificationItem(editingId).credential_id : ""}
+                  className="bg-gray-700 border-gray-600"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="credential_url">Credential URL</Label>
+                <Input
+                  id="credential_url"
+                  name="credential_url"
+                  type="url"
+                  defaultValue={editingId ? getCertificationItem(editingId).credential_url : ""}
+                  className="bg-gray-700 border-gray-600"
+                />
               </div>
 
               <div className="flex justify-end space-x-2 pt-4">
@@ -1338,17 +1610,34 @@ function CertificationsTab({
       ) : null}
 
       {certifications.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-4">
           {certifications.map((item) => (
             <Card key={item.id} className="bg-gray-800 border-gray-700">
               <CardContent className="p-6">
-                <div className="flex flex-col h-full">
+                <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="text-lg font-semibold text-white">{item.title}</h3>
+                    <h3 className="text-xl font-semibold text-white">{item.title}</h3>
                     <p className="text-gray-300">{item.organization}</p>
-                    <p className="text-purple-400 text-sm">{item.date}</p>
+                    {item.issue_date && <p className="text-purple-400 text-sm">Issue Date: {item.issue_date}</p>}
+                    {item.expiration_date && (
+                      <p className="text-purple-400 text-sm">Expiration Date: {item.expiration_date}</p>
+                    )}
+                    {item.credential_id && <p className="text-gray-300">Credential ID: {item.credential_id}</p>}
+                    {item.credential_url && (
+                      <p className="text-gray-300">
+                        Credential URL:{" "}
+                        <a
+                          href={item.credential_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-500 hover:underline"
+                        >
+                          {item.credential_url}
+                        </a>
+                      </p>
+                    )}
                   </div>
-                  <div className="flex justify-end space-x-2 mt-4">
+                  <div className="flex space-x-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -1482,8 +1771,8 @@ function ProjectsTab({
         id: "new",
         title: "",
         description: "",
-        technologies: [],
         link: "",
+        skills: [],
       }
     )
   }
@@ -1515,7 +1804,7 @@ function ProjectsTab({
               <input type="hidden" name="id" value={editingId || "new"} />
 
               <div className="space-y-2">
-                <Label htmlFor="title">Project Name</Label>
+                <Label htmlFor="title">Title</Label>
                 <Input
                   id="title"
                   name="title"
@@ -1532,30 +1821,28 @@ function ProjectsTab({
                   name="description"
                   defaultValue={editingId ? getProjectItem(editingId).description : ""}
                   rows={3}
-                  required
                   className="bg-gray-700 border-gray-600"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="technologies">Technologies (comma separated)</Label>
-                <Input
-                  id="technologies"
-                  name="technologies"
-                  defaultValue={editingId ? getProjectItem(editingId).technologies?.join(", ") : ""}
-                  placeholder="e.g., React, Node.js, TypeScript"
-                  required
-                  className="bg-gray-700 border-gray-600"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="link">Project Link (optional)</Label>
+                <Label htmlFor="link">Link</Label>
                 <Input
                   id="link"
                   name="link"
+                  type="url"
                   defaultValue={editingId ? getProjectItem(editingId).link : ""}
-                  placeholder="e.g., https://github.com/username/project"
+                  className="bg-gray-700 border-gray-600"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="skills">Skills (comma separated)</Label>
+                <Input
+                  id="skills"
+                  name="skills"
+                  defaultValue={editingId ? getProjectItem(editingId).skills?.join(", ") : ""}
+                  placeholder="e.g., React, Node.js, MongoDB"
                   className="bg-gray-700 border-gray-600"
                 />
               </div>
@@ -1592,32 +1879,32 @@ function ProjectsTab({
       ) : null}
 
       {projects.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-4">
           {projects.map((item) => (
             <Card key={item.id} className="bg-gray-800 border-gray-700">
               <CardContent className="p-6">
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-xl font-semibold text-white">{item.title}</h3>
-                    <p className="text-gray-300 mt-2">{item.description}</p>
-                    {item.technologies && item.technologies.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {item.technologies.map((tech, index) => (
-                          <span key={index} className="px-2 py-1 text-xs rounded-full bg-gray-700 text-gray-300">
-                            {tech}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    {item.description && <p className="text-gray-300 mt-2">{item.description}</p>}
                     {item.link && (
-                      <a
-                        href={item.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-block mt-2 text-purple-400 hover:text-purple-300"
-                      >
-                        View Project
-                      </a>
+                      <p className="text-gray-300">
+                        Link:{" "}
+                        <a
+                          href={item.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-500 hover:underline"
+                        >
+                          {item.link}
+                        </a>
+                      </p>
+                    )}
+                    {item.skills && item.skills.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-400">Skills:</p>
+                        <p className="text-gray-300">{item.skills.join(", ")}</p>
+                      </div>
                     )}
                   </div>
                   <div className="flex space-x-2">
