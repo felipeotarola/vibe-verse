@@ -39,7 +39,7 @@ export default function ProjectImagesUpload({ images = [], onImagesChange, maxIm
     )
   }, [images])
 
-  // Improved handleFileChange function to ensure files are properly processed
+  // Update the handleFileChange function to ensure files are properly processed
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) {
@@ -76,8 +76,7 @@ export default function ProjectImagesUpload({ images = [], onImagesChange, maxIm
         })
 
         if (dataUrl) {
-          // IMPORTANT: Create a new File object to ensure it's properly serialized
-          // Some browsers might have issues with the original File object
+          // Create a new File object to ensure it's properly serialized
           const newFile = new File([file], file.name, { type: file.type })
 
           console.log(`Adding new image with display order ${startingOrder + i}`)
@@ -93,16 +92,6 @@ export default function ProjectImagesUpload({ images = [], onImagesChange, maxIm
       }
 
       console.log(`Processed ${files.length} files, new total: ${newImages.length} images`)
-      console.log(
-        "New images array:",
-        newImages.map((img) => ({
-          hasFile: !!img.file,
-          fileSize: img.file?.size,
-          isNew: img.isNew,
-          display_order: img.display_order,
-        })),
-      )
-
       onImagesChange(newImages)
       setIsUploading(false)
     }

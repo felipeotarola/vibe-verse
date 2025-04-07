@@ -105,7 +105,9 @@ export default function ProjectPage() {
           }
 
           // Load project images
+          console.log("Loading project images for ID:", id)
           const imagesData = await getProjectImages(id)
+          console.log("Loaded project images:", imagesData)
 
           // If we have images, use them; otherwise, create an array with the main image
           if (imagesData && imagesData.length > 0) {

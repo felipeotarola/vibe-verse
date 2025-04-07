@@ -1,8 +1,6 @@
 "use client"
 
-import React from "react"
-
-import { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, Save, X, Camera, ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -227,15 +225,29 @@ export default function ProjectForm({ userId, project, isEditing = false, onErro
   const [isShared, setIsShared] = useState(project?.is_shared || false)
   const [projectImages, setProjectImages] = useState<ProjectImageType[]>([])
   const [isUploadingMainImage, setIsUploadingMainImage] = useState(false)
+  const [isLoadingImages, setIsLoadingImages] = useState(isEditing)
   const mainImageInputRef = useRef<HTMLInputElement>(null)
 
   // In the ProjectForm component, make sure we're initializing the tech stack correctly
   // Parse tech stack from project or default to empty array
-  const initialStack = project?.tech_stack
-    ? JSON.parse(project.tech_stack as string)
-    : project?.languages
-      ? JSON.parse(project.languages as string)
-      : []
+  const initialStack = useMemo(() => {
+    if (project?.tech_stack) {
+      try {
+        return JSON.parse(project.tech_stack as string)
+      } catch (e) {
+        console.error("Error parsing tech stack:", e)
+        return []
+      }
+    } else if (project?.languages) {
+      try {
+        return JSON.parse(project.languages as string)
+      } catch (e) {
+        console.error("Error parsing languages:", e)
+        return []
+      }
+    }
+    return []
+  }, [project?.tech_stack, project?.languages])
 
   const [selectedStack, setSelectedStack] = useState<string[]>(initialStack)
   const [stackPopoverOpen, setStackPopoverOpen] = useState(false)
@@ -282,6 +294,7 @@ export default function ProjectForm({ userId, project, isEditing = false, onErro
     async function loadProjectImages() {
       if (isEditing && project) {
         try {
+          setIsLoadingImages(true)
           console.log(`Loading images for project: ${project.id}`)
           const images = await getProjectImages(project.id)
           console.log(`Loaded ${images.length} images for project`)
@@ -301,6 +314,8 @@ export default function ProjectForm({ userId, project, isEditing = false, onErro
         } catch (error) {
           console.error("Error loading project images:", error)
           setProjectImages([])
+        } finally {
+          setIsLoadingImages(false)
         }
       }
     }
@@ -310,21 +325,40 @@ export default function ProjectForm({ userId, project, isEditing = false, onErro
     }
   }, [isEditing, project])
 
-  // Updated handleSubmit function to ensure proper handling of screenshots for new projects
+  // Optimize image preparation for form submission
+  const prepareImagesForSubmission = (formData: FormData) => {
+    // Prepare additional images data
+    const additionalImagesData = projectImages.map((img) => ({
+      id: img.id,
+      image_url: img.image_url,
+      isNew: img.isNew,
+      display_order: img.display_order,
+    }))
+
+    formData.append("additionalImages", JSON.stringify(additionalImagesData))
+
+    // Only add files that are actually new
+    let fileCount = 0
+    projectImages.forEach((img) => {
+      if (img.file && img.isNew) {
+        formData.append(`image_${fileCount}`, img.file)
+        fileCount++
+      }
+    })
+
+    return fileCount
+  }
+
+  // Updated handleSubmit function with optimizations
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     setFormError(null)
 
     try {
-      console.log("Form submission started")
-      console.log("User ID:", userId)
-      console.log("Selected tech stack:", selectedStack)
-      console.log("Is editing:", isEditing)
-      console.log("Project images count:", projectImages.length)
-
       const formData = new FormData()
 
+      // Add basic project data
       if (isEditing && project) {
         formData.append("projectId", project.id)
         formData.append("currentImageUrl", project.image_url || "")
@@ -345,46 +379,15 @@ export default function ProjectForm({ userId, project, isEditing = false, onErro
       if (mainImageFile) {
         formData.append("mainImage", mainImageFile)
       } else if (mainImagePreview && !mainImageFile) {
-        // If we have a preview but no file, it's the existing image
         formData.append("currentImageUrl", mainImagePreview)
       }
 
-      // Log the project images before preparing the form data
-      console.log("Project images before form preparation:", projectImages)
+      // Prepare images for submission
+      const fileCount = prepareImagesForSubmission(formData)
+      console.log(`Added ${fileCount} image files to form data`)
 
-      // Prepare additional images data
-      const additionalImagesData = projectImages.map((img) => ({
-        id: img.id,
-        image_url: img.image_url,
-        isNew: img.isNew,
-        display_order: img.display_order,
-      }))
-
-      formData.append("additionalImages", JSON.stringify(additionalImagesData))
-
-      // Add files to formData - IMPORTANT: Make sure we're adding the files correctly
-      projectImages.forEach((img, index) => {
-        if (img.file) {
-          console.log(`Adding image file ${index} to formData:`, {
-            name: img.file.name,
-            size: img.file.size,
-            type: img.file.type,
-          })
-          // Use a unique key for each file to avoid overwriting
-          formData.append(`image_${index}`, img.file)
-        } else {
-          console.log(`Image ${index} has no file attached`)
-        }
-      })
-
-      // Log all form data keys to verify files are included
-      console.log("Form data keys:", [...formData.keys()])
-
-      console.log("Form data prepared, submitting to server action")
-
+      // Submit the form
       const result = isEditing ? await updateProject(formData) : await createProject(formData)
-
-      console.log("Server action result:", result)
 
       if (result.success) {
         toast({
@@ -425,6 +428,15 @@ export default function ProjectForm({ userId, project, isEditing = false, onErro
   const getStackItemLabel = (value: string) => {
     const item = FLAT_TECH_STACK.find((item) => item.value === value)
     return item ? item.label : value
+  }
+
+  if (isLoadingImages) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+        <span className="ml-3 text-gray-300">Loading project data...</span>
+      </div>
+    )
   }
 
   return (

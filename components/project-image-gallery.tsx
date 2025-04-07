@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,11 @@ interface ProjectImageGalleryProps {
 
 export default function ProjectImageGallery({ images, className = "" }: ProjectImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
+
+  // Log images for debugging
+  useEffect(() => {
+    console.log("ProjectImageGallery received images:", images)
+  }, [images])
 
   // If no images, show placeholder
   if (!images || images.length === 0) {

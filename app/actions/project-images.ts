@@ -19,15 +19,12 @@ export async function getProjectImages(projectId: string) {
   try {
     console.log(`Querying project_images table for project_id = ${projectId}`)
 
-    // Query the project_images table directly without checking if it exists
-    const { data, error, status, statusText, count } = await supabase
+    // Query the project_images table directly
+    const { data, error } = await supabase
       .from("project_images")
       .select("*")
       .eq("project_id", projectId)
       .order("display_order", { ascending: true })
-
-    console.log(`Query response status: ${status} ${statusText}`)
-    console.log(`Query response count: ${count}`)
 
     if (error) {
       console.error("Error fetching project images:", error)
