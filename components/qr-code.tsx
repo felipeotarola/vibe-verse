@@ -5,6 +5,7 @@ import { QRCodeSVG } from "qrcode.react"
 import { Smartphone } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { useMediaQuery } from "@/hooks/use-media-query"
 
 interface QRCodeModalProps {
   url: string
@@ -13,6 +14,12 @@ interface QRCodeModalProps {
 
 export default function QRCodeModal({ url, appName }: QRCodeModalProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const isMobile = useMediaQuery("(max-width: 640px)")
+
+  // Don't render the component at all on mobile devices
+  if (isMobile) {
+    return null
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

@@ -84,8 +84,8 @@ export default function AboutPage() {
               <div className="p-6 bg-gray-800 rounded-xl border border-gray-700">
                 <h3 className="text-xl font-semibold text-white mb-4">About Me</h3>
                 <p className="text-gray-300 mb-4">
-                  I'm Felipe, a passionate web developer and AI enthusiast. With over 5 years of experience in AI and
-                  machine learning, I create applications that understand and enhance your digital experience.
+                  I'm Felipe, a passionate QA/AI enthusiast.
+                  I create applications mostly for fun and entertaiment.
                 </p>
                 <p className="text-gray-300 mb-4">
                   At Felipe's App Space, I believe that technology should adapt to humans, not the other way around. My
