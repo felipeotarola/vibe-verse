@@ -241,11 +241,16 @@ export async function getPublicResumeData(slug: string): Promise<ResumeData | nu
       .from("resume_settings")
       .select("*")
       .eq("public_url_slug", slug)
-      .eq("is_published", true)
       .single()
 
     if (settingsError || !settings) {
-      console.error("Error fetching resume settings or resume not published:", settingsError)
+      console.error("Error fetching resume settings or resume not found:", settingsError)
+      return null
+    }
+
+    // Explicitly check if the resume is published
+    if (!settings.is_published) {
+      console.log("Resume exists but is not published")
       return null
     }
 

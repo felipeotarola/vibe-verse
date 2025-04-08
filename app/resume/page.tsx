@@ -24,13 +24,14 @@ export default async function ResumePage() {
   if (publishedResumes.length === 0) {
     // If no published resumes, show a message with login/signup options
     return (
-      <div className="container py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">Resume</h1>
-            <p className="text-muted-foreground mt-2">No published resume available</p>
-          </div>
-          <div className="flex gap-4">
+      <div className="container py-12">
+        <div className="max-w-2xl mx-auto text-center">
+          <h1 className="text-3xl font-bold mb-4">No Published Resumes</h1>
+          <p className="text-muted-foreground mb-8">
+            There are currently no published resumes available to view. Sign in to create and publish your own
+            professional resume.
+          </p>
+          <div className="flex justify-center gap-4">
             <Button asChild variant="outline">
               <Link href="/auth/login">Login</Link>
             </Button>
