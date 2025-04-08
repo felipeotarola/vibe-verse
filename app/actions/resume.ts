@@ -62,6 +62,8 @@ export interface ResumeSettings {
   user_id: string
   is_published: boolean
   public_url_slug: string | null
+  protection_mode: "public" | "pin_protected"
+  pin_code: string | null
   created_at: string
   updated_at: string
 }
@@ -81,6 +83,8 @@ export interface ResumeData {
   certifications: CertificationItem[]
   projects: ProjectItem[]
   settings?: ResumeSettings
+  isProtected?: boolean
+  incorrectPin?: boolean
 }
 
 // Helper function to compare periods for sorting
@@ -145,6 +149,8 @@ async function getResumeSettings(userId: string): Promise<ResumeSettings | null>
           user_id: userId,
           is_published: false,
           public_url_slug: nanoid(10),
+          protection_mode: "public",
+          pin_code: null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }
@@ -234,7 +240,7 @@ export async function getResumeData(userId: string): Promise<ResumeData> {
 }
 
 // Get public resume data by slug
-export async function getPublicResumeData(slug: string): Promise<ResumeData | null> {
+export async function getPublicResumeData(slug: string, pin?: string): Promise<ResumeData | null> {
   try {
     // Get settings to find the user ID
     const { data: settings, error: settingsError } = await supabase
@@ -252,6 +258,52 @@ export async function getPublicResumeData(slug: string): Promise<ResumeData | nu
     if (!settings.is_published) {
       console.log("Resume exists but is not published")
       return null
+    }
+
+    console.log("Resume protection mode:", settings.protection_mode)
+    console.log("Is PIN protected:", settings.pin_code)
+
+    // Check if pin protection is enabled
+    const isPinProtected = settings.protection_mode === "pin_protected" && settings.pin_code
+
+    // If PIN protected and no PIN or incorrect PIN provided
+    if (isPinProtected) {
+      // If no pin is provided, return a protected version
+      if (!pin) {
+        console.log("No PIN provided for protected resume")
+        return {
+          education: [],
+          experience: [],
+          skills: [],
+          certifications: [],
+          projects: [],
+          settings: {
+            ...settings,
+            pin_code: null, // Don't expose the actual pin code
+          },
+          isProtected: true,
+        }
+      }
+
+      // If pin is provided but doesn't match
+      if (pin !== settings.pin_code) {
+        console.log("Incorrect PIN provided")
+        return {
+          education: [],
+          experience: [],
+          skills: [],
+          certifications: [],
+          projects: [],
+          settings: {
+            ...settings,
+            pin_code: null,
+          },
+          isProtected: true,
+          incorrectPin: true,
+        }
+      }
+
+      console.log("Correct PIN provided, showing resume")
     }
 
     const userId = settings.user_id
@@ -295,7 +347,11 @@ export async function getPublicResumeData(slug: string): Promise<ResumeData | nu
       skills: skills || [],
       certifications: certifications || [],
       projects: projects || [],
-      settings,
+      settings: {
+        ...settings,
+        pin_code: null, // Don't expose the actual pin code
+      },
+      isProtected: false,
     }
   } catch (error) {
     console.error("Error fetching public resume data:", error)
@@ -346,6 +402,58 @@ export async function updateResumePublicationStatus(userId: string, isPublished:
     return {
       success: false,
       message: error.message || "Failed to update publication status",
+    }
+  }
+}
+
+// Add a new function to update resume protection settings
+export async function updateResumeProtection(
+  userId: string,
+  protectionMode: "public" | "pin_protected",
+  pinCode: string | null,
+) {
+  try {
+    // Get current settings
+    const settings = await getResumeSettings(userId)
+
+    // If no settings exist, they will be created by getResumeSettings
+    if (!settings) {
+      return {
+        success: false,
+        message: "Failed to update protection settings. Please try again.",
+      }
+    }
+
+    // Update settings
+    const { error } = await supabase
+      .from("resume_settings")
+      .update({
+        protection_mode: protectionMode,
+        pin_code: pinCode,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId)
+
+    if (error) {
+      console.error("Error updating resume protection settings:", error)
+      return {
+        success: false,
+        message: "Failed to update protection settings. Please try again.",
+      }
+    }
+
+    revalidatePath("/resume")
+    revalidatePath("/resume/edit")
+
+    return {
+      success: true,
+      message: "Resume protection settings updated successfully",
+    }
+  } catch (error: any) {
+    console.error("Error updating resume protection settings:", error)
+    return {
+      success: false,
+      message: error.message || "Failed to update protection settings",
     }
   }
 }

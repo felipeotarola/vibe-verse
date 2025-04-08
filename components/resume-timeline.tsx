@@ -50,12 +50,23 @@ interface CertificationItem {
   logo?: string
 }
 
+interface ResumeSettings {
+  // Define the structure of ResumeSettings here
+  // Example:
+  theme: string
+  showProjects: boolean
+}
+
+// Update the ResumeData interface
 interface ResumeData {
   education: TimelineItemProps[]
   experience: TimelineItemProps[]
   skills: SkillCategory[]
   certifications: CertificationItem[]
   projects: ProjectItem[]
+  settings?: ResumeSettings
+  isProtected?: boolean
+  incorrectPin?: boolean
 }
 
 // Update the ResumeTimelineProps interface to include an optional isPublic prop

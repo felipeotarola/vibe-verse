@@ -1,12 +1,16 @@
+"use client"
+
 import { getPublishedResumes, getResumeData, getPublicResumeData } from "@/app/actions/resume"
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { ResumeTimeline } from "@/components/resume-timeline"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { PinEntry } from "@/components/pin-entry"
+import { cookies } from "next/headers"
 
 export default async function ResumePage() {
-  const supabase = createClient()
+  const supabase = createClient(cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -55,6 +59,23 @@ export default async function ResumePage() {
       <div className="container py-8">
         <h1 className="text-3xl font-bold mb-6">Resume</h1>
         <p>Unable to load resume data. Please try again later.</p>
+      </div>
+    )
+  }
+
+  // Check if the resume is protected and no PIN was provided
+  if (resumeData.isProtected) {
+    return (
+      <div className="container py-8">
+        <h1 className="text-3xl font-bold mb-6 sr-only">Protected Resume</h1>
+        <div className="flex justify-center">
+          <PinEntry
+            onSubmit={(pin) => {
+              // This will be handled client-side in the PinEntry component
+            }}
+            error={resumeData.incorrectPin}
+          />
+        </div>
       </div>
     )
   }

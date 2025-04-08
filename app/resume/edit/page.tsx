@@ -1,156 +1,87 @@
 "use client"
 
-import type React from "react"
-
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Briefcase, GraduationCap, Award, Code, Plus, Trash2, Save, ArrowLeft } from "lucide-react"
+import { getResumeData } from "@/app/actions/resume"
+import { getUser } from "@/lib/auth"
+import { redirect } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ResumeSettings } from "@/components/resume-settings"
+import {
+  ArrowLeft,
+  GraduationCap,
+  Briefcase,
+  Code,
+  Award,
+  Plus,
+  Trash2,
+  Save,
+  LockIcon,
+  UnlockIcon,
+} from "lucide-react"
+
+import type React from "react"
+
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/contexts/auth-context"
+
 import {
-  getResumeData,
   saveEducation,
   saveExperience,
   saveSkillCategory,
   saveCertification,
-  saveProject,
   deleteEducation,
   deleteExperience,
   deleteSkillCategory,
   deleteCertification,
-  deleteProject,
-  type ResumeData,
-  type EducationItem,
-  type ExperienceItem,
-  type SkillCategory as SkillCategoryType,
-  type CertificationItem,
-  type ProjectItem,
-  updateResumePublicationStatus,
 } from "@/app/actions/resume"
-import Link from "next/link"
-import { Switch } from "@/components/ui/switch"
 
-export default function ResumeEditPage() {
-  const { user, isLoading } = useAuth()
-  const router = useRouter()
-  const { toast } = useToast()
-  const [resumeData, setResumeData] = useState<ResumeData>({
-    education: [],
-    experience: [],
-    skills: [],
-    certifications: [],
-    projects: [],
-  })
-  const [isLoadingData, setIsLoadingData] = useState(true)
-  const [activeTab, setActiveTab] = useState("education")
-  const [isSaving, setIsSaving] = useState(false)
-
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push("/auth/login")
-    }
-  }, [user, isLoading, router])
-
-  useEffect(() => {
-    async function loadResumeData() {
-      if (user) {
-        try {
-          const data = await getResumeData(user.id)
-          setResumeData(data)
-        } catch (error) {
-          console.error("Error loading resume data:", error)
-          toast({
-            title: "Error",
-            description: "Failed to load resume data. Please try again.",
-            variant: "destructive",
-          })
-        }
-      }
-      setIsLoadingData(false)
-    }
-
-    if (user) {
-      loadResumeData()
-    }
-  }, [user, toast])
-
-  if (isLoading || isLoadingData) {
-    return (
-      <main className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 text-white">
-        <div className="container px-4 py-8 mx-auto">
-          <div className="flex items-center justify-center min-h-[70vh]">
-            <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        </div>
-      </main>
-    )
-  }
+export default async function ResumeEditPage() {
+  const user = await getUser()
 
   if (!user) {
-    return null // Will redirect in useEffect
+    redirect("/auth/login?next=/resume/edit")
   }
 
-  return (
-    <main className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 text-white">
-      <div className="container px-4 py-8 mx-auto">
-        <header className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight text-white">Edit Resume</h1>
-              <p className="mt-2 text-xl text-gray-300">Customize your professional profile</p>
-            </div>
-            <div className="mt-4 md:mt-0 flex items-center gap-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="publish-resume"
-                  checked={resumeData.settings?.is_published || false}
-                  onCheckedChange={async (checked) => {
-                    if (user) {
-                      const result = await updateResumePublicationStatus(user.id, checked)
-                      if (result.success) {
-                        toast({
-                          title: "Success",
-                          description: result.message,
-                        })
-                        // Refresh data
-                        const updatedData = await getResumeData(user.id)
-                        setResumeData(updatedData)
-                      } else {
-                        toast({
-                          title: "Error",
-                          description: result.message,
-                          variant: "destructive",
-                        })
-                      }
-                    }
-                  }}
-                  className="data-[state=checked]:bg-purple-600"
-                />
-                <Label htmlFor="publish-resume" className="text-sm text-gray-300">
-                  {resumeData.settings?.is_published ? "Published" : "Unpublished"}
-                </Label>
-              </div>
-              <Link href="/resume">
-                <Button variant="outline" className="border-gray-700 text-gray-300 hover:bg-gray-800">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Resume
-                </Button>
-              </Link>
-            </div>
-          </div>
+  const resumeData = await getResumeData(user.id)
+  const settings = resumeData.settings || {
+    id: "",
+    user_id: user.id,
+    is_published: false,
+    public_url_slug: null,
+    protection_mode: "public",
+    pin_code: null,
+    created_at: "",
+    updated_at: "",
+  }
 
-          {resumeData.settings?.is_published && (
-            <div className="mt-4 p-4 bg-purple-900/20 border border-purple-800/50 rounded-lg">
+  const [showPinDialog, setShowPinDialog] = useState(false)
+  const { toast } = useToast()
+
+  return (
+    <div className="container mx-auto py-8">
+      <h1 className="text-3xl font-bold mb-2">Edit Resume</h1>
+      <p className="text-muted-foreground mb-6">Customize your professional profile</p>
+
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <ResumeSettings
+          userId={user.id}
+          isPublished={settings.is_published}
+          protectionMode={settings.protection_mode || "public"}
+          pinCode={settings.pin_code}
+        />
+
+        {resumeData.settings?.is_published && (
+          <div className="mt-4 p-4 bg-purple-900/20 border border-purple-800/50 rounded-lg">
+            <div className="flex flex-col space-y-4">
               <p className="text-purple-300 text-sm">
                 Your resume is currently published and can be viewed by anyone with the link:
               </p>
-              <div className="mt-2 flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <Input
                   value={`${typeof window !== "undefined" ? window.location.origin : ""}/resume/public/${resumeData.settings.public_url_slug}`}
                   readOnly
@@ -173,111 +104,112 @@ export default function ResumeEditPage() {
                   Copy
                 </Button>
               </div>
+
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-300">Protection:</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPinDialog(true)}
+                    className={`border-gray-700 text-gray-300 hover:bg-gray-800 ${
+                      resumeData.settings.protection_mode === "pin_protected" ? "bg-purple-900/20" : ""
+                    }`}
+                  >
+                    {resumeData.settings.protection_mode === "pin_protected" ? (
+                      <>
+                        <LockIcon className="w-4 h-4 mr-2" />
+                        PIN Protected
+                      </>
+                    ) : (
+                      <>
+                        <UnlockIcon className="w-4 h-4 mr-2" />
+                        Public
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {resumeData.settings.protection_mode === "pin_protected" && (
+                  <span className="text-xs text-gray-400">PIN: {resumeData.settings.pin_code}</span>
+                )}
+              </div>
             </div>
-          )}
-        </header>
+          </div>
+        )}
 
-        <div className="p-6 bg-gray-800 rounded-xl border border-gray-700">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="bg-gray-800 border border-gray-700 mb-8">
-              <TabsTrigger
-                value="education"
-                className="data-[state=active]:bg-purple-900/50 data-[state=active]:text-purple-300"
-              >
-                <GraduationCap className="w-4 h-4 mr-2" />
-                Education
-              </TabsTrigger>
-              <TabsTrigger
-                value="experience"
-                className="data-[state=active]:bg-purple-900/50 data-[state=active]:text-purple-300"
-              >
-                <Briefcase className="w-4 h-4 mr-2" />
-                Experience
-              </TabsTrigger>
-              <TabsTrigger
-                value="skills"
-                className="data-[state=active]:bg-purple-900/50 data-[state=active]:text-purple-300"
-              >
-                <Code className="w-4 h-4 mr-2" />
-                Skills
-              </TabsTrigger>
-              <TabsTrigger
-                value="certifications"
-                className="data-[state=active]:bg-purple-900/50 data-[state=active]:text-purple-300"
-              >
-                <Award className="w-4 h-4 mr-2" />
-                Certifications
-              </TabsTrigger>
-              <TabsTrigger
-                value="projects"
-                className="data-[state=active]:bg-purple-900/50 data-[state=active]:text-purple-300"
-              >
-                <Code className="w-4 h-4 mr-2" />
-                Projects
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="education" className="mt-0">
-              <EducationTab
-                education={resumeData.education}
-                userId={user.id}
-                onUpdate={(newEducation) => setResumeData({ ...resumeData, education: newEducation })}
-              />
-            </TabsContent>
-
-            <TabsContent value="experience" className="mt-0">
-              <ExperienceTab
-                experience={resumeData.experience}
-                userId={user.id}
-                onUpdate={(newExperience) => setResumeData({ ...resumeData, experience: newExperience })}
-              />
-            </TabsContent>
-
-            <TabsContent value="skills" className="mt-0">
-              <SkillsTab
-                skills={resumeData.skills}
-                userId={user.id}
-                onUpdate={(newSkills) => setResumeData({ ...resumeData, skills: newSkills })}
-              />
-            </TabsContent>
-
-            <TabsContent value="certifications" className="mt-0">
-              <CertificationsTab
-                certifications={resumeData.certifications}
-                userId={user.id}
-                onUpdate={(newCertifications) => setResumeData({ ...resumeData, certifications: newCertifications })}
-              />
-            </TabsContent>
-
-            <TabsContent value="projects" className="mt-0">
-              <ProjectsTab
-                projects={resumeData.projects}
-                userId={user.id}
-                onUpdate={(newProjects) => setResumeData({ ...resumeData, projects: newProjects })}
-              />
-            </TabsContent>
-          </Tabs>
-        </div>
+        <Button asChild variant="outline">
+          <Link href="/resume">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Resume
+          </Link>
+        </Button>
       </div>
-    </main>
+
+      <Tabs defaultValue="education" className="w-full">
+        <TabsList className="w-full flex justify-between p-0 bg-transparent border-b border-gray-700 mb-8">
+          <TabsTrigger
+            value="education"
+            className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-purple-900/70 data-[state=active]:text-white rounded-t-lg"
+          >
+            <GraduationCap className="w-4 h-4" />
+            Education
+          </TabsTrigger>
+          <TabsTrigger
+            value="experience"
+            className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-purple-900/70 data-[state=active]:text-white rounded-t-lg"
+          >
+            <Briefcase className="w-4 h-4" />
+            Experience
+          </TabsTrigger>
+          <TabsTrigger
+            value="skills"
+            className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-purple-900/70 data-[state=active]:text-white rounded-t-lg"
+          >
+            <Code className="w-4 h-4" />
+            Skills
+          </TabsTrigger>
+          <TabsTrigger
+            value="certifications"
+            className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-purple-900/70 data-[state=active]:text-white rounded-t-lg"
+          >
+            <Award className="w-4 h-4" />
+            Certifications
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="education" className="mt-0">
+          <EducationTabContent education={resumeData.education} userId={user.id} />
+        </TabsContent>
+
+        <TabsContent value="experience" className="mt-0">
+          <ExperienceTabContent experience={resumeData.experience} userId={user.id} />
+        </TabsContent>
+
+        <TabsContent value="skills" className="mt-0">
+          <SkillsTabContent skills={resumeData.skills} userId={user.id} />
+        </TabsContent>
+
+        <TabsContent value="certifications" className="mt-0">
+          <CertificationsTabContent certifications={resumeData.certifications} userId={user.id} />
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 }
 
 // Education Tab Component
-function EducationTab({
-  education,
-  userId,
-  onUpdate,
-}: {
-  education: EducationItem[]
-  userId: string
-  onUpdate: (education: EducationItem[]) => void
-}) {
+function EducationTabContent({ education, userId }: { education: any[]; userId: string }) {
   const { toast } = useToast()
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [localEducation, setLocalEducation] = useState(education)
+
+  const onUpdate = (newEducation: any[]) => {
+    setLocalEducation(newEducation)
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -377,7 +309,7 @@ function EducationTab({
 
   const getEducationItem = (id: string) => {
     return (
-      education.find((item) => item.id === id) || {
+      localEducation.find((item) => item.id === id) || {
         id: "new",
         title: "",
         organization: "",
@@ -423,7 +355,7 @@ function EducationTab({
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white">Education</h2>
+        <h2 className="text-2xl font-bold">Education</h2>
         <Button
           onClick={() => {
             setIsAdding(true)
@@ -667,9 +599,9 @@ function EducationTab({
         </Card>
       ) : null}
 
-      {education.length > 0 ? (
+      {localEducation.length > 0 ? (
         <div className="space-y-4">
-          {education.map((item) => (
+          {localEducation.map((item) => (
             <Card key={item.id} className="bg-gray-800 border-gray-700">
               <CardContent className="p-6">
                 <div className="flex justify-between items-start">
@@ -722,20 +654,17 @@ function EducationTab({
 }
 
 // Experience Tab Component
-function ExperienceTab({
-  experience,
-  userId,
-  onUpdate,
-}: {
-  experience: ExperienceItem[]
-  userId: string
-  onUpdate: (experience: ExperienceItem[]) => void
-}) {
+function ExperienceTabContent({ experience, userId }: { experience: any[]; userId: string }) {
   const { toast } = useToast()
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [localExperience, setLocalExperience] = useState(experience)
+
+  const onUpdate = (newExperience: any[]) => {
+    setLocalExperience(newExperience)
+  }
 
   // Modify the handleSubmit function to combine period start and end
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -840,7 +769,7 @@ function ExperienceTab({
 
   const getExperienceItem = (id: string) => {
     return (
-      experience.find((item) => item.id === id) || {
+      localExperience.find((item) => item.id === id) || {
         id: "new",
         title: "",
         organization: "",
@@ -887,7 +816,7 @@ function ExperienceTab({
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white">Experience</h2>
+        <h2 className="text-2xl font-bold">Experience</h2>
         <Button
           onClick={() => {
             setIsAdding(true)
@@ -1147,9 +1076,9 @@ function ExperienceTab({
         </Card>
       ) : null}
 
-      {experience.length > 0 ? (
+      {localExperience.length > 0 ? (
         <div className="space-y-4">
-          {experience.map((item) => (
+          {localExperience.map((item) => (
             <Card key={item.id} className="bg-gray-800 border-gray-700">
               <CardContent className="p-6">
                 <div className="flex justify-between items-start">
@@ -1209,20 +1138,17 @@ function ExperienceTab({
 }
 
 // Skills Tab Component
-function SkillsTab({
-  skills,
-  userId,
-  onUpdate,
-}: {
-  skills: SkillCategoryType[]
-  userId: string
-  onUpdate: (skills: SkillCategoryType[]) => void
-}) {
+function SkillsTabContent({ skills, userId }: { skills: any[]; userId: string }) {
   const { toast } = useToast()
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [localSkills, setLocalSkills] = useState(skills)
+
+  const onUpdate = (newSkills: any[]) => {
+    setLocalSkills(newSkills)
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -1304,7 +1230,7 @@ function SkillsTab({
 
   const getSkillCategoryItem = (id: string) => {
     return (
-      skills.find((item) => item.id === id) || {
+      localSkills.find((item) => item.id === id) || {
         id: "new",
         name: "",
         skills: [],
@@ -1315,7 +1241,7 @@ function SkillsTab({
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white">Skills</h2>
+        <h2 className="text-2xl font-bold">Skills</h2>
         <Button
           onClick={() => {
             setIsAdding(true)
@@ -1391,9 +1317,9 @@ function SkillsTab({
         </Card>
       ) : null}
 
-      {skills.length > 0 ? (
+      {localSkills.length > 0 ? (
         <div className="space-y-4">
-          {skills.map((item) => (
+          {localSkills.map((item) => (
             <Card key={item.id} className="bg-gray-800 border-gray-700">
               <CardContent className="p-6">
                 <div className="flex justify-between items-start">
@@ -1441,20 +1367,17 @@ function SkillsTab({
 }
 
 // Certifications Tab Component
-function CertificationsTab({
-  certifications,
-  userId,
-  onUpdate,
-}: {
-  certifications: CertificationItem[]
-  userId: string
-  onUpdate: (certifications: CertificationItem[]) => void
-}) {
+function CertificationsTabContent({ certifications, userId }: { certifications: any[]; userId: string }) {
   const { toast } = useToast()
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [localCertifications, setLocalCertifications] = useState(certifications)
+
+  const onUpdate = (newCertifications: any[]) => {
+    setLocalCertifications(newCertifications)
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -1536,7 +1459,7 @@ function CertificationsTab({
 
   const getCertificationItem = (id: string) => {
     return (
-      certifications.find((item) => item.id === id) || {
+      localCertifications.find((item) => item.id === id) || {
         id: "new",
         title: "",
         organization: "",
@@ -1551,7 +1474,7 @@ function CertificationsTab({
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white">Certifications</h2>
+        <h2 className="text-2xl font-bold">Certifications</h2>
         <Button
           onClick={() => {
             setIsAdding(true)
@@ -1674,9 +1597,9 @@ function CertificationsTab({
         </Card>
       ) : null}
 
-      {certifications.length > 0 ? (
+      {localCertifications.length > 0 ? (
         <div className="space-y-4">
-          {certifications.map((item) => (
+          {localCertifications.map((item) => (
             <Card key={item.id} className="bg-gray-800 border-gray-700">
               <CardContent className="p-6">
                 <div className="flex justify-between items-start">
@@ -1730,276 +1653,6 @@ function CertificationsTab({
         <div className="p-8 text-center border border-dashed rounded-lg border-gray-600">
           <p className="text-gray-400">You haven't added any certifications yet.</p>
           <p className="mt-2 text-gray-400">Click the "Add Certification" button to get started.</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Projects Tab Component
-function ProjectsTab({
-  projects,
-  userId,
-  onUpdate,
-}: {
-  projects: ProjectItem[]
-  userId: string
-  onUpdate: (projects: ProjectItem[]) => void
-}) {
-  const { toast } = useToast()
-  const [isAdding, setIsAdding] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setIsSaving(true)
-
-    try {
-      const formData = new FormData(e.currentTarget)
-      formData.append("userId", userId)
-
-      const result = await saveProject(formData)
-
-      if (result.success) {
-        toast({
-          title: "Success",
-          description: result.message,
-        })
-
-        // Refresh data
-        const updatedData = await getResumeData(userId)
-        onUpdate(updatedData.projects)
-
-        // Reset form
-        setIsAdding(false)
-        setEditingId(null)
-      } else {
-        toast({
-          title: "Error",
-          description: result.message,
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("Error saving project:", error)
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this project?")) {
-      setIsDeleting(true)
-
-      try {
-        const result = await deleteProject(id, userId)
-
-        if (result.success) {
-          toast({
-            title: "Success",
-            description: result.message,
-          })
-
-          // Refresh data
-          const updatedData = await getResumeData(userId)
-          onUpdate(updatedData.projects)
-        } else {
-          toast({
-            title: "Error",
-            description: result.message,
-            variant: "destructive",
-          })
-        }
-      } catch (error) {
-        console.error("Error deleting project:", error)
-        toast({
-          title: "Error",
-          description: "An unexpected error occurred. Please try again.",
-          variant: "destructive",
-        })
-      } finally {
-        setIsDeleting(false)
-      }
-    }
-  }
-
-  const getProjectItem = (id: string) => {
-    return (
-      projects.find((item) => item.id === id) || {
-        id: "new",
-        title: "",
-        description: "",
-        link: "",
-        skills: [],
-      }
-    )
-  }
-
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white">Projects</h2>
-        <Button
-          onClick={() => {
-            setIsAdding(true)
-            setEditingId(null)
-          }}
-          className="bg-purple-600 hover:bg-purple-700 text-white"
-          disabled={isAdding || editingId !== null}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Project
-        </Button>
-      </div>
-
-      {isAdding || editingId ? (
-        <Card className="bg-gray-800 border-gray-700 mb-6">
-          <CardHeader>
-            <CardTitle>{editingId ? "Edit Project" : "Add Project"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <input type="hidden" name="id" value={editingId || "new"} />
-
-              <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  name="title"
-                  defaultValue={editingId ? getProjectItem(editingId).title : ""}
-                  required
-                  className="bg-gray-700 border-gray-600"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  defaultValue={editingId ? getProjectItem(editingId).description : ""}
-                  rows={3}
-                  className="bg-gray-700 border-gray-600"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="link">Link</Label>
-                <Input
-                  id="link"
-                  name="link"
-                  type="url"
-                  defaultValue={editingId ? getProjectItem(editingId).link : ""}
-                  className="bg-gray-700 border-gray-600"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="skills">Skills (comma separated)</Label>
-                <Input
-                  id="skills"
-                  name="skills"
-                  defaultValue={editingId ? getProjectItem(editingId).skills?.join(", ") : ""}
-                  placeholder="e.g., React, Node.js, MongoDB"
-                  className="bg-gray-700 border-gray-600"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsAdding(false)
-                    setEditingId(null)
-                  }}
-                  className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white" disabled={isSaving}>
-                  {isSaving ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 mr-2" />
-                      Save
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {projects.length > 0 ? (
-        <div className="space-y-4">
-          {projects.map((item) => (
-            <Card key={item.id} className="bg-gray-800 border-gray-700">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-xl font-semibold text-white">{item.title}</h3>
-                    {item.description && <p className="text-gray-300 mt-2">{item.description}</p>}
-                    {item.link && (
-                      <p className="text-gray-300">
-                        Link:{" "}
-                        <a
-                          href={item.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-purple-400 hover:underline"
-                        >
-                          {item.link}
-                        </a>
-                      </p>
-                    )}
-                    {item.skills && item.skills.length > 0 && (
-                      <div className="mt-2">
-                        <p className="text-sm text-gray-400">Skills:</p>
-                        <p className="text-gray-300">{item.skills.join(", ")}</p>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditingId(item.id)}
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(item.id)}
-                      className="border-red-800 text-red-400 hover:bg-red-900/20"
-                      disabled={isDeleting}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="p-8 text-center border border-dashed rounded-lg border-gray-600">
-          <p className="text-gray-400">You haven't added any projects yet.</p>
-          <p className="mt-2 text-gray-400">Click the "Add Project" button to get started.</p>
         </div>
       )}
     </div>

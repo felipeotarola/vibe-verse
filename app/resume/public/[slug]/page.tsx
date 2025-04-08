@@ -1,37 +1,60 @@
+"use client"
+
+import { Suspense } from "react"
+import { notFound } from "next/navigation"
 import { getPublicResumeData } from "@/app/actions/resume"
 import { ResumeTimeline } from "@/components/resume-timeline"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
+import { PinEntry } from "@/components/pin-entry"
 
-export default async function PublicResumePage({ params }: { params: { slug: string } }) {
+interface PublicResumePageProps {
+  params: {
+    slug: string
+  }
+  searchParams: {
+    pin?: string
+  }
+}
+
+export default async function PublicResumePage({ params, searchParams }: PublicResumePageProps) {
   const { slug } = params
-  const resumeData = await getPublicResumeData(slug)
+  const { pin } = searchParams
 
-  // If no resume data or the resume is not published, show a fallback
+  console.log("Fetching resume data for slug:", slug)
+  console.log("PIN provided:", pin || "None")
+
+  const resumeData = await getPublicResumeData(slug, pin)
+
   if (!resumeData) {
+    console.log("Resume not found or not published")
+    return notFound()
+  }
+
+  // Check if the resume is protected and no PIN or incorrect PIN was provided
+  if (resumeData.isProtected) {
+    console.log("Resume is protected, showing PIN entry form")
     return (
-      <div className="container mx-auto py-12">
-        <div className="max-w-2xl mx-auto text-center">
-          <h1 className="text-3xl font-bold mb-6">Resume Not Available</h1>
-          <p className="text-muted-foreground mb-8">
-            This resume is either not published or doesn't exist. Please check the URL or try again later.
-          </p>
-          <div className="flex justify-center gap-4">
-            <Button asChild variant="outline">
-              <Link href="/resume">View Available Resumes</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/auth/signup">Create Your Own Resume</Link>
-            </Button>
-          </div>
+      <div className="container py-8">
+        <h1 className="text-3xl font-bold mb-6 sr-only">Protected Resume</h1>
+        <div className="flex justify-center">
+          <PinEntry
+            onSubmit={(enteredPin) => {
+              // This will be handled client-side in the PinEntry component
+            }}
+            error={resumeData.incorrectPin}
+          />
         </div>
       </div>
     )
   }
 
+  console.log("Resume is accessible, showing content")
+
   return (
     <div className="container mx-auto py-8">
-      <ResumeTimeline data={resumeData} isPublic={true} />
+      <Suspense fallback={<div>Loading resume...</div>}>
+        <h1 className="text-3xl font-bold mb-6">Resume</h1>
+        <ResumeTimeline data={resumeData} isPublic={true} />
+      </Suspense>
     </div>
   )
 }
