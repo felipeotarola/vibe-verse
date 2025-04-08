@@ -10,6 +10,9 @@ import { getProject, type Project } from "@/app/actions/projects"
 import ProjectImageGallery from "@/components/project-image-gallery"
 import { getProjectImages } from "@/app/actions/project-images"
 
+// Import the QRCodeModal component at the top of the file
+import QRCodeModal from "@/components/qr-code"
+
 // Mock app data
 const mockApps = {
   "1": {
@@ -205,6 +208,7 @@ export default function AppPage() {
                   <a href={`https://app-${id}.copernic.dev`} target="_blank" rel="noopener noreferrer">
                     <Button className="px-8 py-2 text-white bg-purple-600 hover:bg-purple-700">Open App</Button>
                   </a>
+                  <QRCodeModal url={`https://app-${id}.copernic.dev`} appName={mockApp.name} />
                 </div>
               </div>
             </div>
@@ -305,9 +309,12 @@ export default function AppPage() {
               )}
               <div className="mt-4">
                 {project?.url ? (
-                  <a href={project.url} target="_blank" rel="noopener noreferrer">
-                    <Button className="px-8 py-2 text-white bg-purple-600 hover:bg-purple-700">Open App</Button>
-                  </a>
+                  <>
+                    <a href={project.url} target="_blank" rel="noopener noreferrer">
+                      <Button className="px-8 py-2 text-white bg-purple-600 hover:bg-purple-700">Open App</Button>
+                    </a>
+                    <QRCodeModal url={project.url} appName={project?.name || "App"} />
+                  </>
                 ) : (
                   <Button className="px-8 py-2 text-white bg-purple-600 hover:bg-purple-700" disabled>
                     App Unavailable
