@@ -1,7 +1,7 @@
 "use client"
 
 import { getResumeData } from "@/app/actions/resume"
-import { getUser } from "@/lib/auth"
+import { getUser } from "@/lib/auth-server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -82,24 +82,15 @@ export default async function ResumeEditPage() {
                 Your resume is currently published and can be viewed by anyone with the link:
               </p>
               <div className="flex items-center gap-2">
-                <Input
+                <input
                   value={`${typeof window !== "undefined" ? window.location.origin : ""}/resume/public/${resumeData.settings.public_url_slug}`}
                   readOnly
-                  className="bg-gray-800 border-gray-700 text-white"
+                  className="bg-gray-800 border-gray-700 text-white p-2 rounded w-full"
                 />
                 <Button
                   variant="outline"
                   size="sm"
                   className="border-purple-600 text-purple-400 hover:bg-purple-900/50"
-                  onClick={() => {
-                    navigator.clipboard.writeText(
-                      `${typeof window !== "undefined" ? window.location.origin : ""}/resume/public/${resumeData.settings.public_url_slug}`,
-                    )
-                    toast({
-                      title: "Link copied",
-                      description: "Resume link copied to clipboard",
-                    })
-                  }}
                 >
                   Copy
                 </Button>
@@ -111,7 +102,6 @@ export default async function ResumeEditPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowPinDialog(true)}
                     className={`border-gray-700 text-gray-300 hover:bg-gray-800 ${
                       resumeData.settings.protection_mode === "pin_protected" ? "bg-purple-900/20" : ""
                     }`}
@@ -894,7 +884,7 @@ function ExperienceTabContent({ experience, userId }: { experience: any[]; userI
                       id="location"
                       name="location"
                       defaultValue={editingId ? getExperienceItem(editingId).location : ""}
-                      className="absolute inset-0 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                      className="absolute inset-0 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-600 focus:-transparent"
                       placeholder="Enter location"
                       onFocus={() => {
                         const select = document.getElementById("location-select") as HTMLSelectElement
