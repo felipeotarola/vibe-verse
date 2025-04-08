@@ -15,4 +15,3 @@ BEGIN
     WHERE tech_stack IS NULL AND languages IS NOT NULL;
   END IF;
 END $$;
-

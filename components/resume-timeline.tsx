@@ -58,8 +58,10 @@ interface ResumeData {
   projects: ProjectItem[]
 }
 
+// Update the ResumeTimelineProps interface to include an optional isPublic prop
 interface ResumeTimelineProps {
   data: ResumeData
+  isPublic?: boolean
 }
 
 function TimelineItem({
@@ -278,7 +280,8 @@ function ProjectsSection({ projects }: { projects: ProjectItem[] }) {
   )
 }
 
-export default function ResumeTimeline({ data }: ResumeTimelineProps) {
+// Update the component definition to use the isPublic prop
+export function ResumeTimeline({ data, isPublic = false }: { data: ResumeData; isPublic?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -287,15 +290,26 @@ export default function ResumeTimeline({ data }: ResumeTimelineProps) {
 
   const opacity = useTransform(scrollYProgress, [0, 0.2], [0, 1])
 
+  // Hide download button for public views
+  const showDownloadButton = !isPublic
+
+  const handleDownload = () => {
+    // Implement your download logic here
+    console.log("Download button clicked")
+  }
+
   return (
     <div ref={containerRef} className="relative">
-      {/* Download CV button */}
-      <div className="flex justify-end mb-8">
-        <Button className="bg-purple-600 hover:bg-purple-700 text-white">
-          <Download className="w-4 h-4 mr-2" />
-          Download CV
-        </Button>
-      </div>
+      {/* Download CV button - only show for private view */}
+      {/* Only show download button if not public */}
+      {showDownloadButton && (
+        <div className="flex justify-end mb-8">
+          <Button className="bg-purple-600 hover:bg-purple-700 text-white" onClick={handleDownload}>
+            <Download className="w-4 h-4 mr-2" />
+            Download CV
+          </Button>
+        </div>
+      )}
 
       <Tabs defaultValue="experience" className="mb-12">
         <TabsList className="bg-gray-800 border border-gray-700 mb-8">
@@ -386,4 +400,3 @@ export default function ResumeTimeline({ data }: ResumeTimelineProps) {
     </div>
   )
 }
-

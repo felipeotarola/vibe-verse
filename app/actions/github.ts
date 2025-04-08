@@ -303,4 +303,3 @@ function generateMockContributions(year?: number): Omit<ContributionStats, "isMo
     year,
   }
 }
-

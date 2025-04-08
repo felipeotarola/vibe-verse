@@ -1,9 +1,9 @@
 "use server"
 
 import { supabase } from "@/lib/supabase"
-import { createClient } from "@supabase/supabase-js"
 import { revalidatePath } from "next/cache"
 import { uploadAvatar } from "@/lib/blob"
+import { nanoid } from "nanoid"
 
 export interface EducationItem {
   id: string
@@ -35,24 +35,43 @@ export interface SkillItem {
 
 export interface SkillCategory {
   id: string
-  category: string
-  items: SkillItem[]
+  name: string
+  skills?: string[]
 }
 
 export interface CertificationItem {
   id: string
   title: string
   organization: string
-  date: string
-  logo_url?: string
+  issue_date?: string
+  expiration_date?: string
+  credential_id?: string
+  credential_url?: string
 }
 
 export interface ProjectItem {
   id: string
   title: string
   description: string
-  technologies: string[]
   link?: string
+  skills?: string[]
+}
+
+export interface ResumeSettings {
+  id: string
+  user_id: string
+  is_published: boolean
+  public_url_slug: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface PublishedResume {
+  id: string
+  user_id: string
+  user_name?: string | null
+  public_url_slug: string | null
+  updated_at: string
 }
 
 export interface ResumeData {
@@ -61,6 +80,7 @@ export interface ResumeData {
   skills: SkillCategory[]
   certifications: CertificationItem[]
   projects: ProjectItem[]
+  settings?: ResumeSettings
 }
 
 // Helper function to compare periods for sorting
@@ -114,9 +134,123 @@ function compareMonthYear(a: string, b: string): number {
   return aMonth - bMonth
 }
 
+async function getResumeSettings(userId: string): Promise<ResumeSettings | null> {
+  try {
+    const { data, error } = await supabase.from("resume_settings").select("*").eq("user_id", userId).single()
+
+    if (error) {
+      // If no settings exist, create default settings
+      if (error.code === "PGRST116") {
+        const newSettings = {
+          user_id: userId,
+          is_published: false,
+          public_url_slug: nanoid(10),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+
+        const { data: insertedData, error: insertError } = await supabase
+          .from("resume_settings")
+          .insert([newSettings])
+          .select()
+          .single()
+
+        if (insertError) {
+          console.error("Error creating resume settings:", insertError)
+          return null
+        }
+
+        return insertedData as ResumeSettings
+      }
+
+      console.error("Error fetching resume settings:", error)
+      return null
+    }
+
+    return data as ResumeSettings
+  } catch (error) {
+    console.error("Error fetching resume settings:", error)
+    return null
+  }
+}
+
 // Get all resume data for a user
 export async function getResumeData(userId: string): Promise<ResumeData> {
   try {
+    // Get education
+    const { data: education } = await supabase.from("resume_education").select("*").eq("user_id", userId)
+
+    // Sort education by period (newest first)
+    const sortedEducation = education ? [...education].sort((a, b) => comparePeriods(a.period, b.period)) : []
+
+    // Get experience
+    const { data: experience } = await supabase.from("resume_experience").select("*").eq("user_id", userId)
+
+    // Sort experience by period (newest first)
+    const sortedExperience = experience ? [...experience].sort((a, b) => comparePeriods(a.period, b.period)) : []
+
+    // Get skills
+    const { data: skills } = await supabase
+      .from("resume_skills")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+
+    // Get certifications
+    const { data: certifications } = await supabase
+      .from("resume_certifications")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+
+    // Get projects
+    const { data: projects } = await supabase
+      .from("resume_projects")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+
+    // Get resume settings
+    const settings = await getResumeSettings(userId)
+
+    return {
+      education: sortedEducation || [],
+      experience: sortedExperience || [],
+      skills: skills || [],
+      certifications: certifications || [],
+      projects: projects || [],
+      settings: settings || undefined,
+    }
+  } catch (error) {
+    console.error("Error fetching resume data:", error)
+    return {
+      education: [],
+      experience: [],
+      skills: [],
+      certifications: [],
+      projects: [],
+    }
+  }
+}
+
+// Get public resume data by slug
+export async function getPublicResumeData(slug: string): Promise<ResumeData | null> {
+  try {
+    // Get settings to find the user ID
+    const { data: settings, error: settingsError } = await supabase
+      .from("resume_settings")
+      .select("*")
+      .eq("public_url_slug", slug)
+      .eq("is_published", true)
+      .single()
+
+    if (settingsError || !settings) {
+      console.error("Error fetching resume settings or resume not published:", settingsError)
+      return null
+    }
+
+    const userId = settings.user_id
+
     // Get education
     const { data: education } = await supabase.from("resume_education").select("*").eq("user_id", userId)
 
@@ -156,126 +290,58 @@ export async function getResumeData(userId: string): Promise<ResumeData> {
       skills: skills || [],
       certifications: certifications || [],
       projects: projects || [],
-    }
-  } catch (error) {
-    console.error("Error fetching resume data:", error)
-    throw error
-  }
-}
-
-// Get public resume data (for the site owner)
-export async function getPublicResumeData(): Promise<ResumeData> {
-  console.log("=== getPublicResumeData called ===")
-
-  try {
-    // Owner user ID
-    const ownerUserId = "5b2b648d-99aa-45f2-a525-8ed5a02bcf4e"
-    console.log(`Fetching resume data for owner ID: ${ownerUserId}`)
-
-    // Create an admin client using the service role key to bypass RLS
-    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-
-    console.log("Created admin Supabase client to bypass RLS")
-
-    // Get education
-    const { data: education, error: educationError } = await supabaseAdmin
-      .from("resume_education")
-      .select("*")
-      .eq("user_id", ownerUserId)
-
-    if (educationError) {
-      console.error("Error fetching education:", educationError)
-    } else {
-      console.log(`Found ${education?.length || 0} education items`)
-    }
-
-    // Sort education by period (newest first)
-    const sortedEducation = education ? [...education].sort((a, b) => comparePeriods(a.period, b.period)) : []
-
-    // Get experience
-    const { data: experience, error: experienceError } = await supabaseAdmin
-      .from("resume_experience")
-      .select("*")
-      .eq("user_id", ownerUserId)
-
-    if (experienceError) {
-      console.error("Error fetching experience:", experienceError)
-    } else {
-      console.log(`Found ${experience?.length || 0} experience items`)
-    }
-
-    // Sort experience by period (newest first)
-    const sortedExperience = experience ? [...experience].sort((a, b) => comparePeriods(a.period, b.period)) : []
-
-    // Get skills
-    const { data: skills, error: skillsError } = await supabaseAdmin
-      .from("resume_skills")
-      .select("*")
-      .eq("user_id", ownerUserId)
-      .order("created_at", { ascending: false })
-
-    if (skillsError) {
-      console.error("Error fetching skills:", skillsError)
-    } else {
-      console.log(`Found ${skills?.length || 0} skill categories`)
-    }
-
-    // Get certifications
-    const { data: certifications, error: certificationsError } = await supabaseAdmin
-      .from("resume_certifications")
-      .select("*")
-      .eq("user_id", ownerUserId)
-      .order("created_at", { ascending: false })
-
-    if (certificationsError) {
-      console.error("Error fetching certifications:", certificationsError)
-    } else {
-      console.log(`Found ${certifications?.length || 0} certifications`)
-    }
-
-    // Get projects
-    const { data: projects, error: projectsError } = await supabaseAdmin
-      .from("resume_projects")
-      .select("*")
-      .eq("user_id", ownerUserId)
-      .order("created_at", { ascending: false })
-
-    if (projectsError) {
-      console.error("Error fetching projects:", projectsError)
-    } else {
-      console.log(`Found ${projects?.length || 0} projects`)
-    }
-
-    // Check if we found any data
-    const hasData =
-      (sortedEducation && sortedEducation.length > 0) ||
-      (sortedExperience && sortedExperience.length > 0) ||
-      (skills && skills.length > 0) ||
-      (certifications && certifications.length > 0) ||
-      (projects && projects.length > 0)
-
-    console.log(`Has data: ${hasData}`)
-
-    // If no data is found, return empty arrays
-    return {
-      education: sortedEducation || [],
-      experience: sortedExperience || [],
-      skills: skills || [],
-      certifications: certifications || [],
-      projects: projects || [],
+      settings,
     }
   } catch (error) {
     console.error("Error fetching public resume data:", error)
-    // Return empty data on error
-    return {
-      education: [],
-      experience: [],
-      skills: [],
-      certifications: [],
-      projects: [],
+    return null
+  }
+}
+
+// Update resume publication status
+export async function updateResumePublicationStatus(userId: string, isPublished: boolean) {
+  try {
+    // Get current settings
+    const settings = await getResumeSettings(userId)
+
+    // If no settings exist, they will be created by getResumeSettings
+    if (!settings) {
+      return {
+        success: false,
+        message: "Failed to update publication status. Please try again.",
+      }
     }
-  } finally {
-    console.log("=== getPublicResumeData completed ===")
+
+    // Update settings
+    const { error } = await supabase
+      .from("resume_settings")
+      .update({
+        is_published: isPublished,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId)
+
+    if (error) {
+      console.error("Error updating resume publication status:", error)
+      return {
+        success: false,
+        message: "Failed to update publication status. Please try again.",
+      }
+    }
+
+    revalidatePath("/resume")
+    revalidatePath("/resume/edit")
+
+    return {
+      success: true,
+      message: isPublished ? "Resume published successfully" : "Resume unpublished",
+    }
+  } catch (error: any) {
+    console.error("Error updating resume publication status:", error)
+    return {
+      success: false,
+      message: error.message || "Failed to update publication status",
+    }
   }
 }
 
@@ -379,9 +445,7 @@ export async function saveExperience(formData: FormData) {
     const achievements = formData.get("achievements") as string
     const logoFile = formData.get("logo") as File
     const currentLogoUrl = formData.get("currentLogoUrl") as string
-
-    // Fix this line to properly handle the checkbox value
-    const isContract = formData.get("is_contract") === "on"
+    const isContract = formData.get("is_contract") === "true"
 
     let logo_url = currentLogoUrl
 
@@ -462,21 +526,15 @@ export async function saveSkillCategory(formData: FormData) {
   try {
     const userId = formData.get("userId") as string
     const id = formData.get("id") as string
-    const category = formData.get("category") as string
-    const itemsJson = formData.get("items") as string
+    const name = formData.get("name") as string
+    const skills = formData.get("skills") as string
 
-    let items: SkillItem[] = []
-    try {
-      items = JSON.parse(itemsJson)
-    } catch (e) {
-      console.error("Error parsing skill items:", e)
-      items = []
-    }
+    const skillsArray = skills ? skills.split(",").map((s) => s.trim()) : []
 
     const skillData = {
       user_id: userId,
-      category,
-      items,
+      name,
+      skills: skillsArray,
       updated_at: new Date().toISOString(),
     }
 
@@ -534,26 +592,19 @@ export async function saveCertification(formData: FormData) {
     const id = formData.get("id") as string
     const title = formData.get("title") as string
     const organization = formData.get("organization") as string
-    const date = formData.get("date") as string
-    const logoFile = formData.get("logo") as File
-    const currentLogoUrl = formData.get("currentLogoUrl") as string
-
-    let logo_url = currentLogoUrl
-
-    // Upload logo if provided
-    if (logoFile && logoFile.size > 0) {
-      const upload = await uploadAvatar(logoFile)
-      if (upload.success) {
-        logo_url = upload.url
-      }
-    }
+    const issue_date = formData.get("issue_date") as string
+    const expiration_date = formData.get("expiration_date") as string
+    const credential_id = formData.get("credential_id") as string
+    const credential_url = formData.get("credential_url") as string
 
     const certificationData = {
       user_id: userId,
       title,
       organization,
-      date,
-      logo_url,
+      issue_date,
+      expiration_date,
+      credential_id,
+      credential_url,
       updated_at: new Date().toISOString(),
     }
 
@@ -613,17 +664,17 @@ export async function saveProject(formData: FormData) {
     const id = formData.get("id") as string
     const title = formData.get("title") as string
     const description = formData.get("description") as string
-    const technologies = formData.get("technologies") as string
     const link = formData.get("link") as string
+    const skills = formData.get("skills") as string
 
-    const technologiesArray = technologies ? technologies.split(",").map((t) => t.trim()) : []
+    const skillsArray = skills ? skills.split(",").map((s) => s.trim()) : []
 
     const projectData = {
       user_id: userId,
       title,
       description,
-      technologies: technologiesArray,
       link,
+      skills: skillsArray,
       updated_at: new Date().toISOString(),
     }
 
@@ -674,3 +725,50 @@ export async function deleteProject(id: string, userId: string) {
   }
 }
 
+// Get all published resumes
+export async function getPublishedResumes(): Promise<PublishedResume[]> {
+  try {
+    // Get all published resume settings
+    const { data: settings, error } = await supabase
+      .from("resume_settings")
+      .select("*")
+      .eq("is_published", true)
+      .order("updated_at", { ascending: false })
+
+    if (error) {
+      console.error("Error fetching published resumes:", error)
+      return []
+    }
+
+    // Fetch user profiles separately
+    const userIds = settings.map((setting) => setting.user_id)
+
+    // Only fetch profiles if we have user IDs
+    let userProfiles: Record<string, string> = {}
+
+    if (userIds.length > 0) {
+      // Use auth.users table directly instead of profiles
+      const { data: users, error: usersError } = await supabase.from("users").select("id, email").in("id", userIds)
+
+      if (!usersError && users) {
+        // Create a map of user_id to email (as name)
+        userProfiles = users.reduce((acc: Record<string, string>, user) => {
+          acc[user.id] = user.email || "Anonymous User"
+          return acc
+        }, {})
+      }
+    }
+
+    // Format the data to include user names
+    return settings.map((setting) => ({
+      id: setting.id,
+      user_id: setting.user_id,
+      user_name: userProfiles[setting.user_id] || "Anonymous User",
+      public_url_slug: setting.public_url_slug,
+      updated_at: setting.updated_at,
+    }))
+  } catch (error) {
+    console.error("Error fetching published resumes:", error)
+    return []
+  }
+}

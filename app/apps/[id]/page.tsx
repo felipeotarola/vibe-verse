@@ -389,4 +389,3 @@ export default function AppPage() {
     </main>
   )
 }
-

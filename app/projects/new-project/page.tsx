@@ -13,11 +13,13 @@ export default function NewProjectPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Only redirect if we're sure the user isn't logged in
     if (!isLoading && !user) {
       router.push("/auth/login")
     }
   }, [user, isLoading, router])
 
+  // Show a simple loading state instead of a complex component
   if (isLoading) {
     return (
       <main className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 text-white">
@@ -30,8 +32,9 @@ export default function NewProjectPage() {
     )
   }
 
+  // Don't render anything if user is null - will redirect in useEffect
   if (!user) {
-    return null // Will redirect in useEffect
+    return null
   }
 
   return (
@@ -47,10 +50,7 @@ export default function NewProjectPage() {
 
         <header className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-white">Create New Project</h1>
-          <p className="mt-2 text-gray-300">Add a new project to your portfolio with details and screenshots</p>
-          <p className="mt-1 text-sm text-purple-400">
-            You can add up to 5 screenshots that will be saved to the project_images database
-          </p>
+          <p className="mt-2 text-gray-300">Add a new project to your portfolio</p>
         </header>
 
         {error && (
@@ -61,11 +61,10 @@ export default function NewProjectPage() {
 
         <div className="max-w-3xl">
           <div className="p-6 bg-gray-800 rounded-xl border border-gray-700">
-            <ProjectForm userId={user.id} onError={(err) => setError(err)} />
+            {user && <ProjectForm userId={user.id} onError={(err) => setError(err)} />}
           </div>
         </div>
       </div>
     </main>
   )
 }
-

@@ -31,8 +31,10 @@ import {
   type SkillCategory as SkillCategoryType,
   type CertificationItem,
   type ProjectItem,
+  updateResumePublicationStatus,
 } from "@/app/actions/resume"
 import Link from "next/link"
+import { Switch } from "@/components/ui/switch"
 
 export default function ResumeEditPage() {
   const { user, isLoading } = useAuth()
@@ -97,19 +99,82 @@ export default function ResumeEditPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 text-white">
       <div className="container px-4 py-8 mx-auto">
-        <header className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight text-white">Edit Resume</h1>
-            <p className="mt-2 text-xl text-gray-300">Customize your professional profile</p>
+        <header className="mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-4xl font-bold tracking-tight text-white">Edit Resume</h1>
+              <p className="mt-2 text-xl text-gray-300">Customize your professional profile</p>
+            </div>
+            <div className="mt-4 md:mt-0 flex items-center gap-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="publish-resume"
+                  checked={resumeData.settings?.is_published || false}
+                  onCheckedChange={async (checked) => {
+                    if (user) {
+                      const result = await updateResumePublicationStatus(user.id, checked)
+                      if (result.success) {
+                        toast({
+                          title: "Success",
+                          description: result.message,
+                        })
+                        // Refresh data
+                        const updatedData = await getResumeData(user.id)
+                        setResumeData(updatedData)
+                      } else {
+                        toast({
+                          title: "Error",
+                          description: result.message,
+                          variant: "destructive",
+                        })
+                      }
+                    }
+                  }}
+                  className="data-[state=checked]:bg-purple-600"
+                />
+                <Label htmlFor="publish-resume" className="text-sm text-gray-300">
+                  {resumeData.settings?.is_published ? "Published" : "Unpublished"}
+                </Label>
+              </div>
+              <Link href="/resume">
+                <Button variant="outline" className="border-gray-700 text-gray-300 hover:bg-gray-800">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Resume
+                </Button>
+              </Link>
+            </div>
           </div>
-          <div className="mt-4 md:mt-0">
-            <Link href="/resume">
-              <Button variant="outline" className="border-gray-700 text-gray-300 hover:bg-gray-800">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Resume
-              </Button>
-            </Link>
-          </div>
+
+          {resumeData.settings?.is_published && (
+            <div className="mt-4 p-4 bg-purple-900/20 border border-purple-800/50 rounded-lg">
+              <p className="text-purple-300 text-sm">
+                Your resume is currently published and can be viewed by anyone with the link:
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <Input
+                  value={`${typeof window !== "undefined" ? window.location.origin : ""}/resume/public/${resumeData.settings.public_url_slug}`}
+                  readOnly
+                  className="bg-gray-800 border-gray-700 text-white"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-purple-600 text-purple-400 hover:bg-purple-900/50"
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      `${typeof window !== "undefined" ? window.location.origin : ""}/resume/public/${resumeData.settings.public_url_slug}`,
+                    )
+                    toast({
+                      title: "Link copied",
+                      description: "Resume link copied to clipboard",
+                    })
+                  }}
+                >
+                  Copy
+                </Button>
+              </div>
+            </div>
+          )}
         </header>
 
         <div className="p-6 bg-gray-800 rounded-xl border border-gray-700">
@@ -1101,7 +1166,7 @@ function ExperienceTab({
                     {item.achievements && item.achievements.length > 0 && (
                       <div className="mt-2">
                         <p className="text-sm text-gray-400">Achievements:</p>
-                        <ul className="list-disc pl-5 text-gray-300">
+                        <ul className="list-disc list-inside text-gray-300">
                           {item.achievements.map((achievement, index) => (
                             <li key={index}>{achievement}</li>
                           ))}
@@ -1367,7 +1432,7 @@ function SkillsTab({
         </div>
       ) : (
         <div className="p-8 text-center border border-dashed rounded-lg border-gray-600">
-          <p className="text-gray-400">You haven't added any skill categories yet.</p>
+          <p className="text-gray-400">You haven't added any skills yet.</p>
           <p className="mt-2 text-gray-400">Click the "Add Skill Category" button to get started.</p>
         </div>
       )}
@@ -1630,7 +1695,7 @@ function CertificationsTab({
                           href={item.credential_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-500 hover:underline"
+                          className="text-purple-400 hover:underline"
                         >
                           {item.credential_url}
                         </a>
@@ -1894,7 +1959,7 @@ function ProjectsTab({
                           href={item.link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-500 hover:underline"
+                          className="text-purple-400 hover:underline"
                         >
                           {item.link}
                         </a>
@@ -1940,4 +2005,3 @@ function ProjectsTab({
     </div>
   )
 }
-

@@ -58,4 +58,3 @@ USING (
     AND projects.user_id = auth.uid()
   )
 );
-

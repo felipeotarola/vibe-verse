@@ -158,4 +158,3 @@ export async function deleteProjectImage(imageId: string, projectId: string) {
     console.log(`=== deleteProjectImage completed for image ID: ${imageId} ===`)
   }
 }
-

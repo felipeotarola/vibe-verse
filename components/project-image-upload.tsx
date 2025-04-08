@@ -70,4 +70,3 @@ export default function ProjectImageUpload({ currentImageUrl, onImageChange }: P
     </div>
   )
 }
-

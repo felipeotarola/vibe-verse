@@ -39,4 +39,3 @@ CREATE POLICY "Users can delete their own projects"
   ON public.projects 
   FOR DELETE 
   USING (auth.uid() = user_id);
-

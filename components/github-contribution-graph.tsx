@@ -235,4 +235,3 @@ export default function GitHubContributionGraph({ username = "felipeotarola" }: 
     </div>
   )
 }
-

@@ -175,4 +175,3 @@ CREATE POLICY "Users can delete their own resume projects"
   ON public.resume_projects 
   FOR DELETE 
   USING (auth.uid() = user_id);
-

@@ -95,4 +95,3 @@ export async function testProjectImagesTable() {
     console.log("=== Testing project_images table completed ===")
   }
 }
-

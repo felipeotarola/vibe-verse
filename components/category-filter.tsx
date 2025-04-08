@@ -14,4 +14,3 @@ export default function CategoryFilter({ name, count }: CategoryFilterProps) {
     </div>
   )
 }
-

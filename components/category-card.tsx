@@ -23,4 +23,3 @@ export default function CategoryCard({ name, count, icon }: CategoryCardProps) {
     </Link>
   )
 }
-

@@ -482,4 +482,3 @@ export async function getSharedProject(projectId: string) {
     throw error
   }
 }
-

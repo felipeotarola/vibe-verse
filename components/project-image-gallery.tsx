@@ -105,4 +105,3 @@ export default function ProjectImageGallery({ images, className = "" }: ProjectI
     </div>
   )
 }
-

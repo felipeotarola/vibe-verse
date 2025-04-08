@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import Image from "next/image"
 import { Camera, Loader2, X, Plus, ArrowUp, ArrowDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -39,122 +39,137 @@ export default function ProjectImagesUpload({ images = [], onImagesChange, maxIm
     )
   }, [images])
 
-  // Update the handleFileChange function to ensure files are properly processed
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) {
-      console.log("No files selected in file input")
-      return
-    }
-
-    console.log(`File input change: ${files.length} files selected`)
-    setIsUploading(true)
-
-    const newImages: ProjectImage[] = [...images]
-    const startingOrder = newImages.length > 0 ? Math.max(...newImages.map((img) => img.display_order || 0)) + 1 : 0
-
-    console.log(`Starting order for new images: ${startingOrder}`)
-
-    // Process files one by one
-    const processFiles = async () => {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
-        console.log(`Processing file ${i + 1}: ${file.name} (${file.size} bytes)`)
-
-        // Create a promise that resolves with the data URL
-        const dataUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader()
-          reader.onloadend = () => {
-            console.log(`File ${i + 1} read successfully`)
-            resolve(reader.result as string)
-          }
-          reader.onerror = () => {
-            console.error(`Error reading file ${i + 1}`)
-            resolve("")
-          }
-          reader.readAsDataURL(file)
-        })
-
-        if (dataUrl) {
-          // Create a new File object to ensure it's properly serialized
-          const newFile = new File([file], file.name, { type: file.type })
-
-          console.log(`Adding new image with display order ${startingOrder + i}`)
-          console.log(`File details: name=${newFile.name}, size=${newFile.size}, type=${newFile.type}`)
-
-          newImages.push({
-            image_url: dataUrl,
-            file: newFile,
-            isNew: true,
-            display_order: startingOrder + i,
-          })
-        }
+  // Replace the handleFileChange function with a memoized version
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files
+      if (!files || files.length === 0) {
+        console.log("No files selected in file input")
+        return
       }
 
-      console.log(`Processed ${files.length} files, new total: ${newImages.length} images`)
+      console.log(`File input change: ${files.length} files selected`)
+      setIsUploading(true)
+
+      const newImages: ProjectImage[] = [...images]
+      const startingOrder = newImages.length > 0 ? Math.max(...newImages.map((img) => img.display_order || 0)) + 1 : 0
+
+      console.log(`Starting order for new images: ${startingOrder}`)
+
+      // Process files one by one
+      const processFiles = async () => {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i]
+          console.log(`Processing file ${i + 1}: ${file.name} (${file.size} bytes)`)
+
+          // Create a promise that resolves with the data URL
+          const dataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader()
+            reader.onloadend = () => {
+              console.log(`File ${i + 1} read successfully`)
+              resolve(reader.result as string)
+            }
+            reader.onerror = () => {
+              console.error(`Error reading file ${i + 1}`)
+              resolve("")
+            }
+            reader.readAsDataURL(file)
+          })
+
+          if (dataUrl) {
+            // Create a new File object to ensure it's properly serialized
+            const newFile = new File([file], file.name, { type: file.type })
+
+            console.log(`Adding new image with display order ${startingOrder + i}`)
+            console.log(`File details: name=${newFile.name}, size=${newFile.size}, type=${newFile.type}`)
+
+            newImages.push({
+              image_url: dataUrl,
+              file: newFile,
+              isNew: true,
+              display_order: startingOrder + i,
+            })
+          }
+        }
+
+        console.log(`Processed ${files.length} files, new total: ${newImages.length} images`)
+        onImagesChange(newImages)
+        setIsUploading(false)
+      }
+
+      processFiles()
+
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+    },
+    [images, onImagesChange],
+  )
+
+  // Replace the handleRemoveImage function with a memoized version
+  const handleRemoveImage = useCallback(
+    (index: number) => {
+      console.log(`Removing image at index ${index}`)
+      const newImages = [...images]
+      const removedImage = newImages.splice(index, 1)[0]
+      console.log(`Removed image:`, {
+        id: removedImage.id,
+        isNew: removedImage.isNew,
+        display_order: removedImage.display_order,
+      })
+      console.log(`Remaining: ${newImages.length} images`)
       onImagesChange(newImages)
-      setIsUploading(false)
-    }
+    },
+    [images, onImagesChange],
+  )
 
-    processFiles()
+  // Replace the handleMoveImage function with a memoized version
+  const handleMoveImage = useCallback(
+    (index: number, direction: "up" | "down") => {
+      if ((direction === "up" && index === 0) || (direction === "down" && index === images.length - 1)) {
+        console.log(`Cannot move image ${index} ${direction}`)
+        return
+      }
 
-    // Reset the file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
-    }
-  }
+      console.log(`Moving image at index ${index} ${direction}`)
+      const newImages = [...images]
+      const targetIndex = direction === "up" ? index - 1 : index + 1
 
-  const handleRemoveImage = (index: number) => {
-    console.log(`Removing image at index ${index}`)
-    const newImages = [...images]
-    const removedImage = newImages.splice(index, 1)[0]
-    console.log(`Removed image:`, {
-      id: removedImage.id,
-      isNew: removedImage.isNew,
-      display_order: removedImage.display_order,
-    })
-    console.log(`Remaining: ${newImages.length} images`)
-    onImagesChange(newImages)
-  }
+      // Swap display_order values
+      console.log(
+        `Swapping display order: ${newImages[index].display_order} <-> ${newImages[targetIndex].display_order}`,
+      )
+      const tempOrder = newImages[index].display_order
+      newImages[index].display_order = newImages[targetIndex].display_order
+      newImages[targetIndex].display_order = tempOrder
 
-  const handleMoveImage = (index: number, direction: "up" | "down") => {
-    if ((direction === "up" && index === 0) || (direction === "down" && index === images.length - 1)) {
-      console.log(`Cannot move image ${index} ${direction}`)
-      return
-    }
+      // Swap positions in array
+      console.log(`Swapping array positions: ${index} <-> ${targetIndex}`)
+      ;[newImages[index], newImages[targetIndex]] = [newImages[targetIndex], newImages[index]]
 
-    console.log(`Moving image at index ${index} ${direction}`)
-    const newImages = [...images]
-    const targetIndex = direction === "up" ? index - 1 : index + 1
+      console.log(
+        `After move:`,
+        newImages.map((img, i) => ({
+          index: i,
+          id: img.id,
+          display_order: img.display_order,
+        })),
+      )
 
-    // Swap display_order values
-    console.log(`Swapping display order: ${newImages[index].display_order} <-> ${newImages[targetIndex].display_order}`)
-    const tempOrder = newImages[index].display_order
-    newImages[index].display_order = newImages[targetIndex].display_order
-    newImages[targetIndex].display_order = tempOrder
+      onImagesChange(newImages)
+    },
+    [images, onImagesChange],
+  )
 
-    // Swap positions in array
-    console.log(`Swapping array positions: ${index} <-> ${targetIndex}`)
-    ;[newImages[index], newImages[targetIndex]] = [newImages[targetIndex], newImages[index]]
-
-    console.log(
-      `After move:`,
-      newImages.map((img, i) => ({
-        index: i,
-        id: img.id,
-        display_order: img.display_order,
-      })),
-    )
-
-    onImagesChange(newImages)
-  }
-
-  const handleButtonClick = () => {
+  // Replace the handleButtonClick function with a memoized version
+  const handleButtonClick = useCallback(() => {
     console.log("Upload button clicked")
     fileInputRef.current?.click()
-  }
+  }, [])
 
-  const canAddMoreImages = images.length < maxImages
+  // Add a memoized canAddMoreImages value
+  const canAddMoreImages = useMemo(() => images.length < maxImages, [images.length, maxImages])
 
   return (
     <div className="space-y-4">
@@ -257,4 +272,3 @@ export default function ProjectImagesUpload({ images = [], onImagesChange, maxIm
     </div>
   )
 }
-

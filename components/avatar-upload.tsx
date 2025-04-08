@@ -69,4 +69,3 @@ export default function AvatarUpload({ currentAvatarUrl, onAvatarChange }: Avata
     </div>
   )
 }
-

@@ -66,4 +66,3 @@ export default function AppCard({ id, name, developer, category, icon, isProject
     </div>
   )
 }
-

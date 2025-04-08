@@ -231,22 +231,21 @@ export default function ProjectForm({ userId, project, isEditing = false, onErro
   // In the ProjectForm component, make sure we're initializing the tech stack correctly
   // Parse tech stack from project or default to empty array
   const initialStack = useMemo(() => {
+    let stack: string[] = []
     if (project?.tech_stack) {
       try {
-        return JSON.parse(project.tech_stack as string)
+        stack = JSON.parse(project.tech_stack as string)
       } catch (e) {
         console.error("Error parsing tech stack:", e)
-        return []
       }
     } else if (project?.languages) {
       try {
-        return JSON.parse(project.languages as string)
+        stack = JSON.parse(project.languages as string)
       } catch (e) {
         console.error("Error parsing languages:", e)
-        return []
       }
     }
-    return []
+    return stack
   }, [project?.tech_stack, project?.languages])
 
   const [selectedStack, setSelectedStack] = useState<string[]>(initialStack)
@@ -325,29 +324,39 @@ export default function ProjectForm({ userId, project, isEditing = false, onErro
     }
   }, [isEditing, project])
 
+  // Helper function to get tech item label from value
+  const getStackItemLabel = useMemo(() => {
+    return (value: string) => {
+      const item = FLAT_TECH_STACK.find((item) => item.value === value)
+      return item ? item.label : value
+    }
+  }, [FLAT_TECH_STACK])
+
   // Optimize image preparation for form submission
-  const prepareImagesForSubmission = (formData: FormData) => {
-    // Prepare additional images data
-    const additionalImagesData = projectImages.map((img) => ({
-      id: img.id,
-      image_url: img.image_url,
-      isNew: img.isNew,
-      display_order: img.display_order,
-    }))
+  const prepareImagesForSubmission = useMemo(() => {
+    return (formData: FormData) => {
+      // Prepare additional images data
+      const additionalImagesData = projectImages.map((img) => ({
+        id: img.id,
+        image_url: img.image_url,
+        isNew: img.isNew,
+        display_order: img.display_order,
+      }))
 
-    formData.append("additionalImages", JSON.stringify(additionalImagesData))
+      formData.append("additionalImages", JSON.stringify(additionalImagesData))
 
-    // Only add files that are actually new
-    let fileCount = 0
-    projectImages.forEach((img) => {
-      if (img.file && img.isNew) {
-        formData.append(`image_${fileCount}`, img.file)
-        fileCount++
-      }
-    })
+      // Only add files that are actually new
+      let fileCount = 0
+      projectImages.forEach((img) => {
+        if (img.file && img.isNew) {
+          formData.append(`image_${fileCount}`, img.file)
+          fileCount++
+        }
+      })
 
-    return fileCount
-  }
+      return fileCount
+    }
+  }, [projectImages])
 
   // Updated handleSubmit function with optimizations
   const handleSubmit = async (e: React.FormEvent) => {
@@ -422,12 +431,6 @@ export default function ProjectForm({ userId, project, isEditing = false, onErro
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  // Helper function to get tech item label from value
-  const getStackItemLabel = (value: string) => {
-    const item = FLAT_TECH_STACK.find((item) => item.value === value)
-    return item ? item.label : value
   }
 
   if (isLoadingImages) {
@@ -745,4 +748,3 @@ export default function ProjectForm({ userId, project, isEditing = false, onErro
     </form>
   )
 }
-
