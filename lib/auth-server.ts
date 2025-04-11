@@ -11,4 +11,4 @@ export async function getUser() {
     console.error("Error getting user:", error)
     return null
   }
-}
+} 
