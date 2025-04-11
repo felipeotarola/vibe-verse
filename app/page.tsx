@@ -13,65 +13,7 @@ export default async function Home() {
   // Fetch shared projects from the database
   const sharedProjects = await getSharedProjects()
 
-  // Keep the mock apps as fallback in case there are not enough shared projects
-  const mockApps = [
-    {
-      id: "1",
-      name: "Vibe Chat AI",
-      developer: "Felipe",
-      category: "Productivity",
-      icon: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: "2",
-      name: "Mood Board Creator",
-      developer: "Felipe",
-      category: "Creativity",
-      icon: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: "3",
-      name: "AI Music Mixer",
-      developer: "Felipe",
-      category: "Entertainment",
-      icon: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: "4",
-      name: "Smart Task Manager",
-      developer: "Felipe",
-      category: "Productivity",
-      icon: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: "5",
-      name: "Voice Journal",
-      developer: "Felipe",
-      category: "Lifestyle",
-      icon: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: "6",
-      name: "AI Code Assistant",
-      developer: "Felipe",
-      category: "Development",
-      icon: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: "7",
-      name: "Photo Enhancer",
-      developer: "Felipe",
-      category: "Photography",
-      icon: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: "8",
-      name: "Language Translator",
-      developer: "Felipe",
-      category: "Education",
-      icon: "/placeholder.svg?height=80&width=80",
-    },
-  ]
+
 
   return (
     <>
@@ -99,33 +41,18 @@ export default async function Home() {
             </div>
           </div>
 
-          <section className="mb-12">
+          {/* <section className="mb-12">
             <div className="flex items-center mb-6">
               <h2 className="text-2xl font-semibold text-white">Featured App</h2>
               <Sparkles className="w-5 h-5 ml-2 text-purple-400" />
             </div>
             <FeaturedApp />
-          </section>
+          </section> */}
 
-          <section className="mb-12">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-white">Categories</h2>
-              <a href="#" className="text-sm font-medium text-purple-400 hover:text-purple-300">
-                View All
-              </a>
-            </div>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-              <CategoryFilter name="Productivity" count={12} />
-              <CategoryFilter name="Creativity" count={8} />
-              <CategoryFilter name="Social" count={15} />
-              <CategoryFilter name="Utilities" count={10} />
-              <CategoryFilter name="Entertainment" count={7} />
-              <CategoryFilter name="Education" count={9} />
-            </div>
-          </section>
 
-          <section>
-            <div className="flex items-center justify-between mb-6">
+
+<section className="mb-12">
+<div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-semibold text-white">Popular Apps</h2>
               <Link href="/apps" className="text-sm font-medium text-purple-400 hover:text-purple-300">
                 View All
@@ -146,20 +73,23 @@ export default async function Home() {
                 />
               ))}
 
-              {/* If we have fewer than 8 shared projects, fill in with mock apps */}
-              {sharedProjects.length < 8 &&
-                mockApps
-                  .slice(0, 8 - sharedProjects.length)
-                  .map((app) => (
-                    <AppCard
-                      key={app.id}
-                      id={app.id}
-                      name={app.name}
-                      developer={app.developer}
-                      category={app.category}
-                      icon={app.icon}
-                    />
-                  ))}
+            </div>
+          </section>
+
+          <section>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-semibold text-white">Categories</h2>
+              <a href="#" className="text-sm font-medium text-purple-400 hover:text-purple-300">
+                View All
+              </a>
+            </div>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
+              <CategoryFilter name="Productivity" count={1} />
+              <CategoryFilter name="Creativity" count={0} />
+              <CategoryFilter name="Social" count={0} />
+              <CategoryFilter name="Utilities" count={0} />
+              <CategoryFilter name="Entertainment" count={0} />
+              <CategoryFilter name="Education" count={9} />
             </div>
           </section>
         </div>

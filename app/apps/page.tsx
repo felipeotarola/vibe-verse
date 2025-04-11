@@ -10,67 +10,7 @@ export default function AppsPage() {
   const [sharedProjects, setSharedProjects] = useState<Project[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // Mock data for apps
-  const mockApps = [
-    {
-      id: "1",
-      name: "Vibe Chat AI",
-      developer: "Felipe",
-      category: "Productivity",
-      icon: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: "2",
-      name: "Mood Board Creator",
-      developer: "Felipe",
-      category: "Creativity",
-      icon: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: "3",
-      name: "AI Music Mixer",
-      developer: "Felipe",
-      category: "Entertainment",
-      icon: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: "4",
-      name: "Smart Task Manager",
-      developer: "Felipe",
-      category: "Productivity",
-      icon: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: "5",
-      name: "Voice Journal",
-      developer: "Felipe",
-      category: "Lifestyle",
-      icon: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: "6",
-      name: "AI Code Assistant",
-      developer: "Felipe",
-      category: "Development",
-      icon: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: "7",
-      name: "Photo Enhancer",
-      developer: "Felipe",
-      category: "Photography",
-      icon: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: "8",
-      name: "Language Translator",
-      developer: "Felipe",
-      category: "Education",
-      icon: "/placeholder.svg?height=80&width=80",
-    },
-  ]
-
-  useEffect(() => {
+   useEffect(() => {
     async function loadSharedProjects() {
       try {
         const projects = await getSharedProjects()
@@ -109,18 +49,7 @@ export default function AppsPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {/* Display mock apps */}
-          {mockApps.map((app) => (
-            <AppCard
-              key={app.id}
-              id={app.id}
-              name={app.name}
-              developer={app.developer}
-              category={app.category}
-              icon={app.icon}
-            />
-          ))}
-
+        
           {/* Display shared projects */}
           {sharedProjects.map((project) => (
             <AppCard

@@ -14,72 +14,9 @@ import { getProjectImages } from "@/app/actions/project-images"
 import QRCodeModal from "@/components/qr-code"
 
 // Mock app data
-const mockApps = {
-  "1": {
-    id: "1",
-    name: "Vibe Chat AI",
-    developer: "Felipe",
-    category: "Productivity",
-    icon: "/placeholder.svg?height=120&width=120",
-    description:
-      "An AI-powered chat application that understands your vibe and helps you communicate more effectively. This app uses advanced natural language processing to analyze your communication style and suggest improvements.",
-    features: [
-      "AI-powered conversation analysis",
-      "Personalized communication suggestions",
-      "Mood detection and adaptation",
-      "Voice-to-text with emotion recognition",
-      "Integration with popular messaging platforms",
-    ],
-    version: "2.1.0",
-    size: "45 MB",
-    lastUpdated: "April 2, 2025",
-    compatibility: "iOS 14.0+ / Android 10.0+",
-    languages: ["English", "Spanish", "French", "German", "Japanese"],
-  },
-  "2": {
-    id: "2",
-    name: "Mood Board Creator",
-    developer: "Felipe",
-    category: "Creativity",
-    icon: "/placeholder.svg?height=120&width=120",
-    description:
-      "Create beautiful mood boards for your projects with this intuitive app. Drag and drop images, add text, and customize layouts to visualize your ideas.",
-    features: [
-      "Drag-and-drop interface",
-      "Customizable layouts and templates",
-      "Image editing tools",
-      "Text and typography options",
-      "Export to various formats",
-    ],
-    version: "1.5.0",
-    size: "38 MB",
-    lastUpdated: "March 15, 2025",
-    compatibility: "iOS 14.0+ / Android 10.0+",
-    languages: ["English", "Spanish", "French", "German"],
-  },
-  "3": {
-    id: "3",
-    name: "AI Music Mixer",
-    developer: "Felipe",
-    category: "Entertainment",
-    icon: "/placeholder.svg?height=120&width=120",
-    description:
-      "Create amazing music with AI assistance. Mix tracks, generate melodies, and produce professional-quality songs with just a few taps.",
-    features: [
-      "AI-powered melody generation",
-      "Beat matching and mixing",
-      "Virtual instruments",
-      "Voice recording and processing",
-      "Share directly to social media",
-    ],
-    version: "3.0.0",
-    size: "65 MB",
-    lastUpdated: "April 1, 2025",
-    compatibility: "iOS 15.0+ / Android 11.0+",
-    languages: ["English", "Spanish", "Japanese"],
-  },
-  // Add more mock apps as needed
-}
+
+
+
 
 export default function AppPage() {
   const params = useParams() // Use useParams hook
@@ -92,15 +29,6 @@ export default function AppPage() {
 
   useEffect(() => {
     async function loadData() {
-      // First check if this is a mock app
-      if (mockApps[id as keyof typeof mockApps]) {
-        setMockApp(mockApps[id as keyof typeof mockApps])
-        setIsProject(false)
-        setIsLoading(false)
-        return
-      }
-
-      // If not a mock app, try to load as a shared project
       try {
         const projectData = await getProject(id)
 
