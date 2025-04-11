@@ -22,7 +22,7 @@ export default function EditProjectPage() {
     }
   }, [user, isLoading, router])
 
-  useEffect(() => {
+  useEffect(() => { 
     async function loadProject() {
       try {
         // Skip loading if the ID is "new" or "new-project" - these are special routes
