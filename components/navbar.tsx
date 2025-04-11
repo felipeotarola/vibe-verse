@@ -130,11 +130,6 @@ export default function Navbar() {
                       Sign In
                     </Button>
                   </Link>
-                  <Link href="/auth/signup">
-                    <Button size="sm" className="text-white bg-purple-600 hover:bg-purple-700">
-                      Sign Up
-                    </Button>
-                  </Link>
                 </>
               )}
             </div>
@@ -248,11 +243,6 @@ export default function Navbar() {
                       className="justify-center w-full text-purple-400 border-purple-400 hover:bg-purple-900"
                     >
                       Sign In
-                    </Button>
-                  </Link>
-                  <Link href="/auth/signup" onClick={() => setIsMenuOpen(false)}>
-                    <Button size="sm" className="justify-center w-full text-white bg-purple-600 hover:bg-purple-700">
-                      Sign Up
                     </Button>
                   </Link>
                 </>
