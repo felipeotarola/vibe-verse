@@ -8,12 +8,27 @@ import Link from "next/link"
 // Import the getSharedProjects function at the top
 import { getSharedProjects } from "@/app/actions/projects"
 
+// Define the categories we want to display
+const categoriesToShow = [
+  "Productivity",
+  "Creativity",
+  "Social",
+  "Utilities",
+  "Entertainment",
+  "Education",
+]
+
 // Change the component to be async so we can fetch data
 export default async function Home() {
   // Fetch shared projects from the database
   const sharedProjects = await getSharedProjects()
 
-
+  // Calculate category counts
+  const categoryCounts: { [key: string]: number } = {}
+  sharedProjects.forEach((project) => {
+    const category = project.category || "Other" // Default to 'Other' if category is null/undefined
+    categoryCounts[category] = (categoryCounts[category] || 0) + 1
+  })
 
   return (
     <>
@@ -53,7 +68,7 @@ export default async function Home() {
 
 <section className="mb-12">
 <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-white">Popular Apps</h2>
+              <h2 className="text-2xl font-semibold text-white">Explore Apps</h2>
               <Link href="/apps" className="text-sm font-medium text-purple-400 hover:text-purple-300">
                 View All
               </Link>
@@ -84,12 +99,14 @@ export default async function Home() {
               </a>
             </div>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-              <CategoryFilter name="Productivity" count={1} />
-              <CategoryFilter name="Creativity" count={0} />
-              <CategoryFilter name="Social" count={0} />
-              <CategoryFilter name="Utilities" count={0} />
-              <CategoryFilter name="Entertainment" count={0} />
-              <CategoryFilter name="Education" count={9} />
+              {/* Display categories dynamically */}
+              {categoriesToShow.map((categoryName) => (
+                <CategoryFilter
+                  key={categoryName}
+                  name={categoryName}
+                  count={categoryCounts[categoryName] || 0} // Use calculated count, default to 0
+                />
+              ))}
             </div>
           </section>
         </div>

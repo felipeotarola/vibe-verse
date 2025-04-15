@@ -1,8 +1,8 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useMemo } from "react"
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, Save, X, Camera, ImageIcon } from "lucide-react"
+import { Loader2, Save, X, Camera, ImageIcon, Sparkle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -226,6 +226,7 @@ export default function ProjectForm({ userId, project, isEditing = false, onErro
   const [projectImages, setProjectImages] = useState<ProjectImageType[]>([])
   const [isUploadingMainImage, setIsUploadingMainImage] = useState(false)
   const [isLoadingImages, setIsLoadingImages] = useState(isEditing)
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false)
   const mainImageInputRef = useRef<HTMLInputElement>(null)
 
   // In the ProjectForm component, make sure we're initializing the tech stack correctly
@@ -324,6 +325,39 @@ export default function ProjectForm({ userId, project, isEditing = false, onErro
     }
   }, [isEditing, project])
 
+  const generateDescriptionWithAI = useCallback(async () => {
+    if (!name || !category) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide a project name and category to generate a description.",
+        variant: "destructive",
+      })
+      return;
+    }
+    setIsGeneratingDescription(true)
+    try {
+      const response = await fetch("/api/ai/generate-description", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, category }),
+      })
+      const data = await response.json()
+      setDescription(data.description)
+    } catch (error) {
+      console.error("Error generating description:", error)
+      toast({
+        title: "Error generating description",
+        description: "An error occurred while generating the description. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsGeneratingDescription(false)
+    }
+  }, [name, category])
+
+
   // Helper function to get tech item label from value
   const getStackItemLabel = useMemo(() => {
     return (value: string) => {
@@ -399,6 +433,16 @@ export default function ProjectForm({ userId, project, isEditing = false, onErro
       const result = isEditing ? await updateProject(formData) : await createProject(formData)
 
       if (result.success) {
+
+        if (!description) {
+          toast({
+            title: "Missing Description",
+            description: "Please generate a description using AI before continuing.",
+            variant: "destructive",
+          })
+          return
+        }
+
         toast({
           title: isEditing ? "Project updated" : "Project created",
           description: result.message,
@@ -468,14 +512,34 @@ export default function ProjectForm({ userId, project, isEditing = false, onErro
         <label htmlFor="description" className="block text-sm font-medium text-gray-300">
           Description
         </label>
-        <Textarea
-          id="description"
-          value={description || ""}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe your project..."
-          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
-          rows={4}
-        />
+        <div className="flex gap-4 items-end">
+          <Textarea
+            id="description"
+            value={description || ""}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Describe your project..."
+            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+            rows={4}
+          />
+          <Button
+            type="button"
+            onClick={generateDescriptionWithAI}
+            className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white"
+            disabled={isGeneratingDescription}
+          >
+            {isGeneratingDescription ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Sparkle className="mr-2 h-4 w-4" />
+                Generate with AI
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Main Project Image Upload */}
